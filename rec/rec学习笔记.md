@@ -222,4 +222,16 @@ ItemCF算法并不利用物品的内容属性计算物品之间的相似度， �
 
 
 
-$$ \min *{\boldsymbol{q}^{\*}, \boldsymbol{p}^{\*}} \frac{1}{2} \sum*{(u, i) \in K}\left(\boldsymbol{r}*{\mathrm{ui}}-p*{u}^{T} q_{i}\right)^{2}\lambda\left(\left|p_{u}\right|^{2}+\left|q_{i}\right|^{2}\right) $$
+#### FM
+
+**原理介绍**
+
+https://zhuanlan.zhihu.com/p/58160982
+
+https://tech.meituan.com/2016/03/03/deep-understanding-of-ffm-principles-and-practices.html
+
+**实战讲解**
+
+https://zhuanlan.zhihu.com/p/343174108
+
+https://github.com/CastellanZhang/alphaFM
