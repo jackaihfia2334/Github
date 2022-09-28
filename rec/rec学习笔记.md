@@ -222,7 +222,7 @@ ItemCF算法并不利用物品的内容属性计算物品之间的相似度， �
 
 
 
-#### FM
+#### FM（factor Machine，因子分解机）
 
 **原理介绍**
 
@@ -232,6 +232,9 @@ https://tech.meituan.com/2016/03/03/deep-understanding-of-ffm-principles-and-pra
 
 **实战讲解**
 
-https://zhuanlan.zhihu.com/p/343174108
+FM用于各阶段 https://zhuanlan.zhihu.com/p/343174108
 
-https://github.com/CastellanZhang/alphaFM
+demo（py)  https://github.com/gczr/FM
+
+工业级demo (c/c++)  https://github.com/CastellanZhang/alphaFM
+
