@@ -2,13 +2,23 @@ import torch
 import tqdm
 from sklearn.metrics import roc_auc_score
 
+"""
+def try_gpu(i=0):  #@save
+    #如果存在,则返回gpu(i),否则返回cpu()
+    if torch.cuda.device_count() >= i + 1:
+        return torch.device(f'cuda:{i}')
+    return torch.device('cpu')
+"""
+
 def train(model, optimizer, data_loader, criterion, device, log_interval=100):
+
+    #model = model.to(device)
     model.train()
     total_loss = 0
     tk0 = tqdm.tqdm(data_loader, smoothing=0, mininterval=1.0)
     for i, (fields, target) in enumerate(tk0):
-        fields=fields.long()
-        target=target.long()
+        fields=fields.long().to(device)
+        target=target.long().to(device)
         y = model(fields)
         loss = criterion(y, target.float())
         model.zero_grad()
@@ -26,12 +36,13 @@ def train(model, optimizer, data_loader, criterion, device, log_interval=100):
 
 
 def test(model, data_loader, device):
+    #model = model.to(device)
     model.eval()
     targets, predicts = list(), list()
     with torch.no_grad():
         for fields, target in tqdm.tqdm(data_loader, smoothing=0, mininterval=1.0):
-            fields=fields.long()
-            target=target.long()
+            fields=fields.long().to(device)
+            target=target.long().to(device)
             y = model(fields)
             targets.extend(target.tolist())
             predicts.extend(y.tolist())
