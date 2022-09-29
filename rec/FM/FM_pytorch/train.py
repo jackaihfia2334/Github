@@ -15,6 +15,11 @@ def train(model, optimizer, data_loader, criterion, device, log_interval=100):
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
+        """
+        1.item()取出张量具体位置的元素元素值
+        2.并且返回的是该位置元素值的高精度值
+        3.保持原元素类型不变；必须指定位置
+        """
         if (i + 1) % log_interval == 0:
             tk0.set_postfix(loss=total_loss / log_interval)
             total_loss = 0
@@ -36,13 +41,13 @@ def test(model, data_loader, device):
 class EarlyStopper(object):
 
     def __init__(self, num_trials, save_path):
-        self.num_trials = num_trials
+        self.num_trials = num_trials  #num_trials:表示尝试num_trials次后，如果没有提升就提前终止训练
         self.trial_counter = 0
         self.best_accuracy = 0
-        self.save_path = save_path
+        self.save_path = save_path   #save_path：表示每次最优模型的存放路径
 
     def is_continuable(self, model, accuracy):
-        if accuracy > self.best_accuracy:
+        if accuracy > self.best_accuracy:  
             self.best_accuracy = accuracy
             self.trial_counter = 0
             torch.save(model, self.save_path)

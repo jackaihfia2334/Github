@@ -2,7 +2,10 @@ import torch
 import numpy as np
 
 class FeaturesLinear(torch.nn.Module):
-
+    """
+    线性部分也用nn.embedding来实现 只要设置oupu_dim=1即可,本来这个参数也是可学习的
+    
+    """
     def __init__(self, field_dims, output_dim=1):
         super().__init__()
         #这里filed_dims以电影的数据为例子，x有两列user_id,movie_id,这里的field_dims=[610，193609]是两个id的最大值
@@ -19,6 +22,8 @@ class FeaturesLinear(torch.nn.Module):
         """
         :param x: Long tensor of size ``(batch_size, num_fields)``
         """
+
+        #源数据x有两列user_id,movie_id，所以num_fields = 2
         #这里加上偏移项才能从embedding字典取到正确的向量
         #因为x.shape=[batch_size, num_fields],offsets=[2],所以通过unsqueeze(0)变成offsets=[1,2],这样shape差不多才能和x相加
         x = x + x.new_tensor(self.offsets).unsqueeze(0)
@@ -51,11 +56,11 @@ class  FeatureInteraction(torch.nn.Module):
         """
         :param x: Float tensor of size ``(batch_size, num_fields, embed_dim)``
         """
-        square_of_sum = torch.sum(x, dim=1) ** 2
-        sum_of_square = torch.sum(x ** 2, dim=1)
+        square_of_sum = torch.sum(x, dim=1) ** 2      #(batch_size,  embed_dim)
+        sum_of_square = torch.sum(x ** 2, dim=1)      #(batch_size,  embed_dim)
         ix = square_of_sum - sum_of_square
         if self.reduce_sum:
-            ix = torch.sum(ix, dim=1, keepdim=True)
+            ix = torch.sum(ix, dim=1, keepdim=True)   #(batch_size,  1)
         return 0.5 * ix
 
 class FactorizationMachineModel(torch.nn.Module):
