@@ -238,3 +238,96 @@ demo（py)  https://github.com/gczr/FM
 
 工业级demo (c/c++)  https://github.com/CastellanZhang/alphaFM
 
+
+
+
+
+#### Item2vec
+
+先复习Word2Vec
+
+https://datawhalechina.github.io/fun-rec/#/ch02/ch2.1/ch2.1.2/word2vec 原理、推导、核心代码
+
+https://zhuanlan.zhihu.com/p/89020340  Skip-Gram模型和负采样
+
+##### Skip-gram & CBWO
+
+##### Naive Softmax & 负采样Negative Sampling
+
+注：注意到上图，中心词词向量为v_{c}*v**c*,而上下文词词向量为u_{o}*u**o*。也就是说每个词会对应两个词向量，**在词w做中心词时，使用v_{w}\*v\**w\*作为词向量，而在它做上下文词时，使用u_{w}\*u\**w\*作为词向量**。这样做的原因是为了求导等操作时计算上的简便。当整个模型训练完成后，我们既可以使用v_{w}*v**w*作为词w的词向量，也可以使用u_{w}*u**w*作为词w的词向量，亦或是将二者平均。
+
+Q&A:
+
+1. P(o|c)怎么表示？
+2. 为何最小化损失函数能够得到良好表示的词向量dense word vector？
+
+回答1：我们使用**中心词c和上下文词o的相似性**来计算P(o|c)*P*(*o*∣*c*)，更具体地，相似性由**词向量的点积**表示
+
+使用词向量的点积表示P(o|c)的原因：1.计算简单 2.出现在一起的词向量意义相关，则希望它们相似
+
+又P(o|c)是一个概率，所以我们在**整个语料库**上使用**softmax**将点积的值映射到概率
+
+
+
+**Item2Vec** 的原理十分十分简单，它是基于 Skip-Gram 模型的物品向量训练方法。但又存在一些区别，如下：
+
+- 词向量的训练是基于句子序列（sequence），但是物品向量的训练是基于物品集合（set）。
+- 因此，物品向量的训练丢弃了空间、时间信息。
+
+
+
+##### Item2vec实例——Airbnb召回
+
+业务背景：
+
+Airbnb 是全球最大的短租平台，包含了数百万种不同的房源。
+
+Airbnb 平台 99% 的房源预订来自于**搜索排序**和**相似房源推荐**。
+
+
+
+Embedding:
+
+Airbnb 描述了两种 Embedding 的构建方法，分别为：
+
+- 用于描述短期实时性的个性化特征 Embedding：**listing Embeddings**    (listing 表示房源)
+- 用于描述长期的个性化特征 Embedding：**user-type & listing type Embeddings**
+- 
+
+Listing Embeddings 是基于用户的点击 session 学习得到的，用于表示房源的短期实时性特征。
+
+建立多用户点击session，基于 Word2Vec 的 Skip-Gram 模型来学习不同 listing 的 Embedding 表示
+
+改进点：
+
+1.**正负样本集构建的改进**（使用 booked listing 作为全局上下文，负样本的选择新增了与其位于同一个 market 的 listing）
+
+2.**Listing Embedding 的冷启动**（房主提供的房源信息，为其查找3个相似的 listing，并将它们 Embedding 的均值作为新 listing 的 Embedding表示）
+
+
+
+
+
+##### User-type & Listing-type Embedding
+
+除了挖掘 Listing 的短期兴趣特征表示外，还对 User 和 Listing 的长期兴趣特征表示进行了探索
+
+长期兴趣的探索是基于 booking session（如上文，用户的历史预定序列，booked listing 表示用户在 session 中最终预定的房源）
+
+
+
+遇到的问题：
+
+- 预定本身就是一件低频率事件。booking sessions 数据量的大小远远小于 click sessions 
+- 许多用户过去只预定了单个数量的房源，无法从长度为1的 session 中学习 Embedding
+- 对于任何实体，要基于 context 学习到有意义的 Embedding，该实体至少在数据中出现5-10次。但平台上大多数 listing_ids 被预定的次数低于5-10次。
+- 用户连续两次预定的时间间隔可能较长，在此期间用户的行为（如价格敏感点）偏好可能会发生改变（由于职业的变化）。
+
+
+
+#### 特征工程概念补充
+
+**feature coverage** https://datascience.stackexchange.com/questions/17121/definition-of-feature-coverage
+
+**feature importance**
+
