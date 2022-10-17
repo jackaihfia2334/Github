@@ -331,6 +331,47 @@ GBDT讲解  回归部分： https://mp.weixin.qq.com/s/Eh_YzmBDng5ChwSs2MUjxQ
 
 既可以用于召回也可以用于排序
 
+显示建模二阶交叉
+
+可以优化时空复杂度
+
+
+
+#### FNN
+
+![img](https://upload-images.jianshu.io/upload_images/23551183-f79550e72c599930.png?imageMogr2/auto-orient/strip|imageView2/2/format/webp)
+
+![img](https://upload-images.jianshu.io/upload_images/23551183-afb740f6bc91e34e.png?imageMogr2/auto-orient/strip|imageView2/2/format/webp)
+
+
+
+
+
+优点：
+
+- 引入DNN对特征进行更高阶组合，减少特征工程，能在一定程度上增强FM的学习能力。这种尝试为后续深度推荐模型的发展提供了新的思路（相比模型效果而言，个人感觉这种融合思路意义更大）。
+
+缺点：
+
+- 两阶段训练模式，在应用过程中不方便，且模型能力受限于FM表征能力的上限。
+- FNN专注于高阶组合特征，但是却没有将低阶特征纳入模型。
+
+仔细分析下这种两阶段训练的方式，存在几个问题：
+
+1）FM中进行特征组合，使用的是隐向量点积。将FM得到的隐向量移植到DNN中接入全连接层，全连接本质是将输入向量的所有元素进行加权求和，且不会对特征Field进行区分，也就是说FNN中高阶特征组合使用的是全部隐向量元素相加的方式。说到底，在理解特征组合的层面上FNN与FM是存在Gap的，而这一点也正是PNN对其进行改进的动力。
+
+2）在神经网络的调参过程中，参数学习率是很重要的。况且FNN中底层参数是通过FM预训练而来，如果在进行反向传播更新参数的时候学习率过大，很容易将FM得到的信息抹去。个人理解，FNN至少应该采用Layer-wise learning rate，底层的学习率小一点，上层可以稍微大一点，在保留FM的二阶交叉信息的同时，在DNN上层进行更高阶的组合。
+
+
+
+#### 补充—工程注意点
+
+nn.embedding
+
+nn.linear
+
+
+
 
 
 #### PNN![image-20210308142624189](http://ryluo.oss-cn-chengdu.aliyuncs.com/%E5%9B%BE%E7%89%87image-20210308142624189.png)
@@ -351,6 +392,8 @@ https://datawhalechina.github.io/fun-rec/#/ch02/ch2.2/ch2.2.2/PNN
 
 #### Wide&Deep
 
+![image-20200910214310877](http://ryluo.oss-cn-chengdu.aliyuncs.com/Javaimage-20200910214310877.png)
+
 Q&A：
 
 1. 为什么Wide部分要用L1 FTRL训练？
@@ -358,6 +401,21 @@ Q&A：
 3. 在你的应用场景中，哪些特征适合放在Wide侧，哪些特征适合放在Deep侧，为什么呢？
 
 https://zhuanlan.zhihu.com/p/142958834
+
+https://zhuanlan.zhihu.com/p/92279796
+
+![img](https://pic3.zhimg.com/80/v2-0bd41080df368ff3767b42bb3bd2e882_720w.webp)
+
+优点：
+
+- 简单有效。结构简单易于理解，效果优异。目前仍在工业界广泛使用，也证明了该模型的有效性。
+- 结构新颖。使用不同于以往的线性模型与DNN串行连接的方式，而将线性模型与DNN并行连接，同时兼顾模型的Memorization与Generalization。
+
+缺点：
+
+- Wide侧的特征工程仍无法避免。
+
+
 
 
 
