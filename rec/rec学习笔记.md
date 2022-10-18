@@ -301,6 +301,8 @@ Listing Embeddings 是基于用户的点击 session 学习得到的，用于表�
 
 ### 经典排序模型
 
+系列文章参考：https://www.zhihu.com/people/dadada-82-81/posts
+
 
 
 #### GBDT+LR
@@ -339,6 +341,8 @@ GBDT讲解  回归部分： https://mp.weixin.qq.com/s/Eh_YzmBDng5ChwSs2MUjxQ
 
 #### FNN
 
+https://www.jianshu.com/p/c639d52c124b
+
 ![img](https://upload-images.jianshu.io/upload_images/23551183-f79550e72c599930.png?imageMogr2/auto-orient/strip|imageView2/2/format/webp)
 
 ![img](https://upload-images.jianshu.io/upload_images/23551183-afb740f6bc91e34e.png?imageMogr2/auto-orient/strip|imageView2/2/format/webp)
@@ -364,11 +368,103 @@ GBDT讲解  回归部分： https://mp.weixin.qq.com/s/Eh_YzmBDng5ChwSs2MUjxQ
 
 
 
+```python
+import torch
+import torch.nn as nn
+from BaseModel.basemodel import BaseModel
+
+class FNN(BaseModel):
+    def __init__(self, config, dense_features_cols, sparse_features_cols):
+        super(FNN, self).__init__(config)
+        # 稠密和稀疏特征的数量
+        self.num_dense_feature = dense_features_cols.__len__()
+        self.num_sparse_feature = sparse_features_cols.__len__()
+
+        # FNN的线性部分，对应 ∑WiXi
+        self.embedding_layers_1 = nn.ModuleList([
+            nn.Embedding(num_embeddings=feat_dim, embedding_dim=1)
+                for feat_dim in sparse_features_cols
+        ])
+
+        # FNN的Interaction部分，对应∑∑<Vi,Vj>XiXj
+        self.embedding_layers_2 = nn.ModuleList([
+            nn.Embedding(num_embeddings=feat_dim, embedding_dim=config['embed_dim'])
+                for feat_dim in sparse_features_cols
+        ])
+
+        # FNN的DNN部分
+        self.hidden_layers = [self.num_dense_feature + self.num_sparse_feature*(config['embed_dim']+1)] + config['dnn_hidden_units']
+        self.dnn_layers = nn.ModuleList([
+            nn.Linear(in_features=layer[0], out_features=layer[1])\
+                for layer in list(zip(self.hidden_layers[:-1], self.hidden_layers[1:]))
+        ])
+        self.dnn_linear = nn.Linear(self.hidden_layers[-1], 1, bias=False)
+
+    def forward(self, x):
+        # 先区分出稀疏特征和稠密特征，这里是按照列来划分的，即所有的行都要进行筛选
+        dense_input, sparse_inputs = x[:, :self.num_dense_feature], x[:, self.num_dense_feature:]
+        sparse_inputs = sparse_inputs.long()
+
+        # 求出线性部分
+        linear_logit = [self.embedding_layers_1[i](sparse_inputs[:, i]) for i in range(sparse_inputs.shape[1])]
+        linear_logit = torch.cat(linear_logit, axis=-1)
+
+        # 求出稀疏特征的embedding向量
+        sparse_embeds = [self.embedding_layers_2[i](sparse_inputs[:, i]) for i in range(sparse_inputs.shape[1])]
+        sparse_embeds = torch.cat(sparse_embeds, axis=-1)
+
+        dnn_input = torch.cat((dense_input, linear_logit, sparse_embeds), dim=-1)
+
+        # DNN 层
+        dnn_output = dnn_input
+        for dnn in self.dnn_layers:
+            dnn_output = dnn(dnn_output)
+            dnn_output = torch.tanh(dnn_output)
+        dnn_logit = self.dnn_linear(dnn_output)
+
+        # Final
+        y_pred = torch.sigmoid(dnn_logit)
+
+        return y_pred
+```
+
+从上述代码中不难看出
+
+工程实现中，是先将sparse feature通过FM预训练得到的输入层转化为 linear_logit和 sparse_embeds，然后再与dense feature拼接，送入DNN中，即dense feature不参与FM运算
+
+
+
 #### 补充—工程注意点
 
-nn.embedding
+FM中，对于线性层和二阶交叉层有两种不同的实现方式
 
-nn.linear
+1.先将sparse feature 转化为one-hot编码，然后通过nn.linear转化为低维稠密向量
+
+2.先将sparse feature 通过LabelEncoder转化为类别特征，然后通过nn.embedding直接转化为低维稠密向量
+
+
+
+Attention：在FM的原公式中，线性部分和二阶交叉部分都乘了特征本值
+
+![image-20221017191709980](C:\Users\ys\AppData\Roaming\Typora\typora-user-images\image-20221017191709980.png)
+
+而在实现中，两者往往都是直接通过nn.embedding生成的，这是因为一般不对系数特征Xi进行one-hot编码，仅作LabelEncoder转化为类别特征。	One-hot编码后该Filed也只有一个值不为0，所以其最终结果是一致的。
+
+
+
+**摘自源码：**
+
+ **线性部分的计算，所有特征的Input层，然后经过一个全连接层线性计算结果logits**
+
+ **即FM线性部分的那块计算w1x1+w2x2+...wnxn + b,只不过，连续特征和离散特征这里的线性计算还不太一样**
+
+**连续特征由于是数值，可以直接过全连接，得到线性这边的输出。  离散特征需要先embedding得到1维embedding，然后直接把这个1维的embedding相加就得到离散这边的线性输出。**
+
+
+
+
+
+
 
 
 
@@ -423,6 +519,29 @@ https://zhuanlan.zhihu.com/p/92279796
 
 本质上DeepFM是显式的针对特征各种组合建模：一阶特征与二阶交叉特征（FM部分）、高阶特征（DNN部分），最终将低阶到高阶的所有特征以并行的方式连接到一起。之前的模型或多或少都没有这么完备，三者至少缺其一。
 
+![image-20210225180556628](http://ryluo.oss-cn-chengdu.aliyuncs.com/%E5%9B%BE%E7%89%87image-20210225180556628.png)
+
+
+
+
+
+Q&A:
+1、**Sparse Feature中黄色和灰色节点代表什么意思**
+
+FM分为线性部分和二阶交叉部分，黄色代表sparse feature中的非零值，灰色代表零值
+
+![image-20221018142022312](C:\Users\ys\AppData\Roaming\Typora\typora-user-images\image-20221018142022312.png)
+
+2、**图例中的绿色连线、红色连线和黑色连线代表什么意思**
+
+图例中展示了三种颜色的线条，其中绿色的箭头表示为特征的Embedding过程，即得到特征对应的Embedding vector，通常使用 vixi 来表示，而其中的隐向量 vi 则是通过模型学习得到的参数。红色箭头表示权重为1的连接，也就是说红色箭头并不是需要学习的参数。而黑色连线则表示为正常的，需要模型学习的参数 wi 。
+
+![image-20221018131850330](C:\Users\ys\AppData\Roaming\Typora\typora-user-images\image-20221018131850330.png)
+
+结合公式整体可描述为，Sparse feature非零值直接计算linear部分，embedding后得到dense embedding，计算二阶交叉部分，并送入DNN隐式计算高阶交叉，最后三部分输出相加过一个sigmoid函数得到最终结果。
+
+
+
 
 
 
@@ -454,3 +573,191 @@ https://zhuanlan.zhihu.com/p/92279796
 列举几种模型进行完备性对比，结果如下所示。FNN模型与PNN模型将重心放在提取高阶特征信息，PNN中Product Layer精心构建低阶交叉特征信息（小于等于2阶），但是仅作为后续DNN的输入，并未将低阶特征与高阶特征并行连接。并且FNN需要进行参数预训练，模型构建时间开销较多。Wide&Deep模型将低阶与高阶特征同时建模，但是在Wide侧通常需要更多的特征工程工作。所以，整体对比下来DeepFM的完备性更高。
 
 ![img](https://pic3.zhimg.com/80/v2-275cc5be9cc045b19cda83a3169fa3a2_720w.webp)
+
+
+
+
+
+
+
+#### xDeepFM
+
+2018年由中科大、北邮、微软联合推出，该模型的主要贡献在于，基于**vector-wise**的模式提出了新的**显式交叉高阶特征**的方法，并且与DCN 一样，能够构造有限阶交叉特征。虽然xDeepFM在名称上与DeepFM 相似，但其主要对比的是**DCN模型**。
+
+**vector-wise模式：**
+
+与vector-wise概念相对应的是bit-wise，在最开始的FM模型当中，通过特征隐向量之间的点积来表征特征之间的交叉组合。特征交叉参与运算的最小单位为向量，且同一隐向量内的元素并不会有交叉乘积，这种方式称为vector-wise。后续FM的衍生模型，尤其是**引入DNN模块后，常见的做法是，将embedding之后的特征向量拼接到一起，然后送入后续的DNN结构模拟特征交叉的过程。这种方式与vector-wise的区别在于，各特征向量concat在一起成为一个向量，抹去了不同特征向量的概念，后续模块计算时，对于同一特征向量内的元素会有交互计算的现象出现**，这种方式称为bit-wise。将常见的bit-wise方式改为vector-wise，使模型与FM思想更贴切，这也是xDeepFM的Motivation之一。
+
+
+
+计算过程推导与性能分析： https://zhuanlan.zhihu.com/p/101073773
+
+
+
+**CIN** 实现参考
+
+```python
+ def build(self, input_shape):
+        # input_shape  [None, field_nums, embedding_dim]
+        self.field_nums = input_shape[1]
+        
+        # CIN 的每一层大小Hk，这里加入第0层，也就是输入层H_0
+        self.field_nums = [self.field_nums] + self.cin_size
+        
+        # 过滤器
+        self.cin_W = {
+            'CIN_W_' + str(i): self.add_weight(
+                name='CIN_W_' + str(i),
+                shape = (1, self.field_nums[0] * self.field_nums[i], self.field_nums[i+1]), # 这个大小要理解
+                initializer='random_uniform',
+                regularizer=l2(self.l2_reg),
+                trainable=True
+            )
+            for i in range(len(self.field_nums)-1)
+        }
+        
+        super(CIN, self).build(input_shape)
+        
+    def call(self, inputs):
+        # inputs [None, field_num, embed_dim]
+        embed_dim = inputs.shape[-1]
+        hidden_layers_results = [inputs]
+        
+        # 从embedding的维度把张量一个个的切开,这个为了后面逐通道进行卷积，算起来好算
+        # 这个结果是个list， list长度是embed_dim, 每个元素维度是[None, field_nums[0], 1]  field_nums[0]即输入的特征个数
+        # 即把输入的[None, field_num, embed_dim]，切成了embed_dim个[None, field_nums[0], 1]的张量
+        split_X_0 = tf.split(hidden_layers_results[0], embed_dim, 2) 
+        
+        for idx, size in enumerate(self.cin_size):
+            # 这个操作和上面是同理的，也是为了逐通道卷积的时候更加方便，分割的是当一层的输入Xk-1
+            split_X_K = tf.split(hidden_layers_results[-1], embed_dim, 2)   # embed_dim个[None, field_nums[i], 1] feild_nums[i] 当前隐藏层单元数量
+            
+            # 外积的运算
+            out_product_res_m = tf.matmul(split_X_0, split_X_K, transpose_b=True) # [embed_dim, None, field_nums[0], field_nums[i]]
+            out_product_res_o = tf.reshape(out_product_res_m, shape=[embed_dim, -1, self.field_nums[0]*self.field_nums[idx]]) # 后两维合并起来
+            out_product_res = tf.transpose(out_product_res_o, perm=[1, 0, 2])  # [None, dim, field_nums[0]*field_nums[i]]
+            
+            # 卷积运算
+            # 这个理解的时候每个样本相当于1张通道为1的照片 dim为宽度， field_nums[0]*field_nums[i]为长度
+            # 这时候的卷积核大小是field_nums[0]*field_nums[i]的, 这样一个卷积核的卷积操作相当于在dim上进行滑动，每一次滑动会得到一个数
+            # 这样一个卷积核之后，会得到dim个数，即得到了[None, dim, 1]的张量， 这个即当前层某个神经元的输出
+            # 当前层一共有field_nums[i+1]个神经元， 也就是field_nums[i+1]个卷积核，最终的这个输出维度[None, dim, field_nums[i+1]]
+            cur_layer_out = tf.nn.conv1d(input=out_product_res, filters=self.cin_W['CIN_W_'+str(idx)], stride=1, padding='VALID')
+            
+            cur_layer_out = tf.transpose(cur_layer_out, perm=[0, 2, 1])  # [None, field_num[i+1], dim]
+            
+            hidden_layers_results.append(cur_layer_out)
+        
+        # 最后CIN的结果，要取每个中间层的输出，这里不要第0层的了
+        final_result = hidden_layers_results[1:]     # 这个的维度T个[None, field_num[i], dim]  T 是CIN的网络层数
+        
+        # 接下来在第一维度上拼起来  
+        result = tf.concat(final_result, axis=1)  # [None, H1+H2+...HT, dim]
+        # 接下来， dim维度上加和，并把第三个维度1干掉
+        result = tf.reduce_sum(result, axis=-1, keepdims=False)  # [None, H1+H2+..HT]
+        
+        return result
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#### NFM
+
+Neural Factorization Machines： https://datawhalechina.github.io/fun-rec/#/ch02/ch2.2/ch2.2.3/NFM
+
+![image-20221017194117516](C:\Users\ys\AppData\Roaming\Typora\typora-user-images\image-20221017194117516.png)
+
+改进的思路就是**用一个表达能力更强的函数来替代原FM中二阶隐向量内积的部分**
+
+
+
+![image-20221017194517248](C:\Users\ys\AppData\Roaming\Typora\typora-user-images\image-20221017194517248.png)
+
+
+
+这个地方不是两个隐向量的内积，而是元素积，也就是这一个交叉完了之后k个维度不求和，最后会得到一个kk维向量，而FM那里内积的话最后得到一个数， 在进行两两Embedding元素积之后，对交叉特征向量取和， 得到该层的输出向量， 很显然， 输出是一个k维的向量。
+
+注意， 之前的FM到这里其实就完事了， 上面就是输出了，而这里很大的一点改进就是加入特征池化层之后， 把二阶交互的信息合并， 且上面接了一个DNN网络， 这样就能够增强FM的表达能力了， 因为FM只能到二阶， 而这里的DNN可以进行多阶且非线性，只要FM把二阶的学习好了， DNN这块学习来会更加容易。
+
+如果不加DNN， NFM就退化成了FM，所以改进的关键就在于加了一个这样的层，组合了一下二阶交叉的信息，然后又给了DNN进行高阶交叉的学习，成了一种“加强版”的FM。
+
+
+
+#### AFM
+
+动机：
+
+AFM的全称是Attentional Factorization Machines, 从模型的名称上来看是在FM的基础上加上了注意力机制，FM是通过特征隐向量的内积来对交叉特征进行建模，从公式中可以看出所有的交叉特征都具有相同的权重也就是1，没有考虑到不同的交叉特征的重要性程度
+
+如何让不同的交叉特征具有不同的重要性就是AFM核心的贡献，在谈论AFM交叉特征注意力之前，对于FM交叉特征部分的改进还有FFM，其是考虑到了对于不同的其他特征，某个指定特征的隐向量应该是不同的（相比于FM对于所有的特征只有一个隐向量，FFM对于一个特征有多个不同的隐向量）
+
+
+
+![img](https://pic3.zhimg.com/v2-a72eb9a432bab47d05a654ba64767d0e_r.jpg)
+
+
+
+其实就是一种加性注意力机制
+
+计算过程与性能分析： https://zhuanlan.zhihu.com/p/94009156
+
+
+
+
+
+
+
+#### AutoInt
+
+(Automatic Feature Interaction) https://datawhalechina.github.io/fun-rec/#/ch02/ch2.2/ch2.2.2/AutoInt
+
+动机：
+
+1. 浅层的模型会受到交叉阶数的限制，没法完成高阶交叉
+2. 深层模型的DNN在学习高阶隐性交叉的效果并不是很好， 且不具有可解释性
+
+引入了**Transformer**， 做成了一个特征交互层
+
+![image-20221018163656583](C:\Users\ys\AppData\Roaming\Typora\typora-user-images\image-20221018163656583.png)
+
+
+
+关于建模任意的高阶交互， 我们这里拿一个transformer块看下， 对于一个transformer块， 我们发现特征之间完成了一个2阶的交互过程，得到的输出里面我们还保留着1阶的原始特征。
+
+那么再经过一个transformer块呢？ 这里面就会有2阶和1阶的交互了， 也就是会得到3阶的交互信息。而此时的输出，会保留着第一个transformer的输出信息特征。再过一个transformer块的话，就会用4阶的信息交互信息， 其实就相当于， 第n*n*个transformer里面会建模出n+1*n*+1阶交互来， 这个与CrossNet其实有异曲同工之妙的，无法是中间交互时的方式不一样。 前者是bit-wise级别的交互，而后者是vector-wise的交互。
+
+所以， AutoInt是可以建模任意高阶特征的交互的，并且这种交互还是显性。
+
+
+
+
+
+其他：特别注意这里的embedding层
+
+对于第*i*个离散特征，直接第*i*个嵌入矩阵*Vi*乘one-hot向量就取出了对应位置的embedding。 当然，如果输入的时候不是个one-hot， 而是个multi-hot的形式，那么对应的embedding输出是各个embedding求平均得到的。
+
+而对于连续值特征， 这里不进行分桶操作，而是通过id与嵌入矩阵关联，取相应的embedding。不过，最后要乘一个连续值。           ![image-20221018164440372](C:\Users\ys\AppData\Roaming\Typora\typora-user-images\image-20221018164440372.png)
+
+
+
+
+
+**FiBiNET**
+
+(Feature Importance and Bilinear feature Interaction)

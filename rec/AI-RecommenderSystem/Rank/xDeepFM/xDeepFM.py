@@ -123,7 +123,7 @@ class CIN(Layer):
         # input_shape  [None, field_nums, embedding_dim]
         self.field_nums = input_shape[1]
         
-        # CIN 的每一层大小，这里加入第0层，也就是输入层H_0
+        # CIN 的每一层大小Hk，这里加入第0层，也就是输入层H_0
         self.field_nums = [self.field_nums] + self.cin_size
         
         # 过滤器
@@ -131,6 +131,7 @@ class CIN(Layer):
             'CIN_W_' + str(i): self.add_weight(
                 name='CIN_W_' + str(i),
                 shape = (1, self.field_nums[0] * self.field_nums[i], self.field_nums[i+1]), # 这个大小要理解
+                # 卷积核大小self.field_nums[0] * self.field_nums[i]，卷积核个数(输出通道数)self.field_nums[i+1]
                 initializer='random_uniform',
                 regularizer=l2(self.l2_reg),
                 trainable=True
