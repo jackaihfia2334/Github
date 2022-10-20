@@ -116,7 +116,7 @@
    
    from  scipy.stats  import  pearsonr
 
-### UserCF算法（基于用户的协同过滤算法）
+##### UserCF算法（基于用户的协同过滤算法）
 
 计算过程：
 
@@ -136,13 +136,13 @@
 - 基于用户的协同过滤需要维护用户相似度矩阵以便快速的找出 TopN*T**o**pN* 相似用户， 该矩阵的存储开销非常大，存储空间随着用户数量的增加而增加。
 - 故不适合用户数据量大的情况使用
 
-### UserCF算法（基于用户的协同过滤算法）
+##### UserCF算法（基于用户的协同过滤算法）
 
 ItemCF算法并不利用物品的内容属性计算物品之间的相似度， 主要通过分析用户的行为记录计算物品之间的相似度， 该算法认为， 物品 A 和物品 C 具有很大的相似度是因为喜欢物品 A 的用户极可能喜欢物品 C。
 
 和基于内容的推荐算法(Content-Based Recommendation)进行区分！
 
-### 协同过滤算法的问题分析
+##### 协同过滤算法的问题分析
 
 泛化能力弱：
 
@@ -282,7 +282,7 @@ Listing Embeddings 是基于用户的点击 session 学习得到的，用于表�
 
 
 
-### 特征工程概念补充
+#### 特征工程概念补充
 
 **feature coverage**  https://datascience.stackexchange.com/questions/17121/definition-of-feature-coverage
 
@@ -292,7 +292,7 @@ Listing Embeddings 是基于用户的点击 session 学习得到的，用于表�
 
 
 
-### 双塔模型
+#### 双塔模型
 
 文献：
 
@@ -306,21 +306,43 @@ https://zhuanlan.zhihu.com/p/52504407
 
 https://zhuanlan.zhihu.com/p/365690334
 
-#### 模型结构
+##### 模型结构
 
 ![image-20221020142810579](C:\Users\ys\AppData\Roaming\Typora\typora-user-images\image-20221020143031379.png)
 
-#### ![image-20221020143109055](C:\Users\ys\AppData\Roaming\Typora\typora-user-images\image-20221020143109055.png)
+![image-20221020143109055](C:\Users\ys\AppData\Roaming\Typora\typora-user-images\image-20221020143109055.png)
+
+##### 训练方法
+
+###### Pointwise训练
+
+![image-20221020154155139](C:\Users\ys\AppData\Roaming\Typora\typora-user-images\image-20221020154155139.png)
+
+###### Pairwise训练
+
+![image-20221020154641070](C:\Users\ys\AppData\Roaming\Typora\typora-user-images\image-20221020154641070.png)
+
+![image-20221020154649335](C:\Users\ys\AppData\Roaming\Typora\typora-user-images\image-20221020154649335.png)
 
 
 
-#### 训练方法
+###### Listwise训练
 
-#### 正负样本选择
+（可以类别  对比学习 NCEloss）
+
+![image-20221020154656205](C:\Users\ys\AppData\Roaming\Typora\typora-user-images\image-20221020154656205.png)
+
+![image-20221020154700814](C:\Users\ys\AppData\Roaming\Typora\typora-user-images\image-20221020154700814.png)
+
+##### 正负样本选择
+
+![image-20221020154209119](C:\Users\ys\AppData\Roaming\Typora\typora-user-images\image-20221020154209119.png)
 
 
 
-#### 线上服务，模型更新
+
+
+##### 线上服务，模型更新
 
 
 
