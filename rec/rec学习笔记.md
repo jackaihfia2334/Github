@@ -758,6 +758,12 @@ AFM的全称是Attentional Factorization Machines, 从模型的名称上来看�
 
 
 
-**FiBiNET**
+#### FiBiNET
 
 (Feature Importance and Bilinear feature Interaction)
+
+背景介绍：
+
+SFNET
+
+Bilnear Interaction

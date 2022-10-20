@@ -140,6 +140,7 @@ class DIN(Model):
     
         # 下面进行attention_layer的计算
         user_info = self.attention_layer([item_embed, seq_embed, seq_embed, mask])   # (None, embed_dim) 
+        # item_embed, seq_embed, seq_embed分别为Q,K,V
         
         # 所有特征拼起来了
         if self.dense_len > 0 or self.other_sparse_len > 0:
