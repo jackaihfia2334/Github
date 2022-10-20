@@ -19,7 +19,7 @@ class Attention_layer(Layer):
         这里的inputs包含四部分： [item_embed, seq_embed, seq_embed, mask]
         
         item_embed: 这个是候选商品的embedding向量   维度是(None, embedding_dim * behavior_num)   # behavior_num能表示用户行为的特征个数 这里是1， 所以(None, embed_dim)
-        seq_embed: 这个是用户历史商品序列的embedding向量， 维度是(None, max_len, embedding_dim * behavior_num)  (None, max_len, embed_dim)
+        seq_embed: 这个是用户历史商品序列的embedding向量, 维度是(None, max_len, embedding_dim * behavior_num)  (None, max_len, embed_dim)
         mask:  维度是(None, max_len)   这个里面每一行是[False, False, True, True, ....]的形式， False的长度表示样本填充的那部分
         """
         q, k, v, key_masks = inputs
@@ -68,9 +68,9 @@ class DIN(Model):
         """
         DIN:
         feature_columns:列表, [dense_feature_columns,sparse_feature_columns],dense_feature_columns是[{'feat': 'feat_name'}], 而sparse_feature_columns是[{'feat':'feat_name', 'feat_num': 'nunique', 'embed_dim'}]
-        behavior_feature_list: 列表. 能表示用户历史行为的特征, 比如商品id， 店铺id ['item', 'cat']
+        behavior_feature_list: 列表. 能表示用户历史行为的特征, 比如商品id, 店铺id ['item', 'cat']
         att_hidden_units: 注意力层的隐藏单元个数.可以是一个列表或者元组，毕竟注意力层也是一个全连接的网络嘛
-        ffn_hidden_units:全连接层的隐藏单元个数和层数，可以是一个列表或者元组  (80, 40)  就表示两层神经网络， 第一层隐藏层单元80个， 第二层40个
+        ffn_hidden_units:全连接层的隐藏单元个数和层数，可以是一个列表或者元组  (80, 40)  就表示两层神经网络, 第一层隐藏层单元80个, 第二层40个
         att_activation: 激活单元的名称， 字符串
         ffn_activation: 激活单元的名称， 用'prelu'或者'Dice'  
         maxlen: 标量. 用户历史行为序列的最大长度
@@ -114,12 +114,12 @@ class DIN(Model):
         
     def call(self, inputs):
         """
-        inputs: [dense_input, sparse_input, seq_input, item_input]  ， 第二部分是离散型的特征输入， 第三部分是用户的历史行为， 第四部分是当前商品的输入
+        inputs: [dense_input, sparse_input, seq_input, item_input]  第一部分是连续型的特征输入,第二部分是离散型的特征输入,第三部分是用户的历史行为,第四部分是当前商品的输入
     
-        dense_input： 连续型的特征输入， 维度是(None, dense_len)
+        dense_input:  连续型的特征输入， 维度是(None, dense_len)
         sparse_input: 离散型的特征输入， 维度是(None, other_sparse_len)
-        seq_inputs: 用户的历史行为序列(None, maxlen, behavior_len)
-        item_inputs： 当前的候选商品序列 (None, behavior_len)
+        seq_inputs:   用户的历史行为序列(None, maxlen, behavior_len)
+        item_inputs:  当前的候选商品序列 (None, behavior_len)
         """
         
         dense_inputs, sparse_inputs, seq_inputs, item_inputs = inputs

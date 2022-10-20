@@ -269,13 +269,22 @@ Listing Embeddings 是基于用户的点击 session 学习得到的，用于表�
 遇到的问题：
 
 - 预定本身就是一件低频率事件。booking sessions 数据量的大小远远小于 click sessions 
+
 - 许多用户过去只预定了单个数量的房源，无法从长度为1的 session 中学习 Embedding
+
 - 对于任何实体，要基于 context 学习到有意义的 Embedding，该实体至少在数据中出现5-10次。但平台上大多数 listing_ids 被预定的次数低于5-10次。
+
 - 用户连续两次预定的时间间隔可能较长，在此期间用户的行为（如价格敏感点）偏好可能会发生改变（由于职业的变化）。
 
-#### 特征工程概念补充
+  
 
-**feature coverage** https://datascience.stackexchange.com/questions/17121/definition-of-feature-coverage
+
+
+
+
+### 特征工程概念补充
+
+**feature coverage**  https://datascience.stackexchange.com/questions/17121/definition-of-feature-coverage
 
 **feature importance**
 
@@ -283,11 +292,35 @@ Listing Embeddings 是基于用户的点击 session 学习得到的，用于表�
 
 
 
+### 双塔模型
+
+文献：
+
+1.**Deep Neural Networks for YouTube Recommendations**
+
+https://zhuanlan.zhihu.com/p/52169807
+
+https://zhuanlan.zhihu.com/p/52504407
+
+2.**Sampling-Bias-Corrected Neural Modeling for Large Corpus Item Recommendations**
+
+https://zhuanlan.zhihu.com/p/365690334
+
+#### 模型结构
+
+![image-20221020142810579](C:\Users\ys\AppData\Roaming\Typora\typora-user-images\image-20221020143031379.png)
+
+#### ![image-20221020143109055](C:\Users\ys\AppData\Roaming\Typora\typora-user-images\image-20221020143109055.png)
 
 
 
+#### 训练方法
+
+#### 正负样本选择
 
 
+
+#### 线上服务，模型更新
 
 
 
@@ -767,3 +800,113 @@ AFM的全称是Attentional Factorization Machines, 从模型的名称上来看�
 SFNET
 
 Bilnear Interaction
+
+
+
+#### DIN
+
+
+
+工业上的CTR预测数据集大致的样子：
+
+![img](https://img-blog.csdnimg.cn/20210118190044920.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3d1emhvbmdxaWFuZw==,size_1,color_FFFFFF,t_70#pic_center)
+
+类别特征经过 one-hot、multi-hot 编码后：
+
+![image-20221020133301708](C:\Users\ys\AppData\Roaming\Typora\typora-user-images\image-20221020133301708.png)
+
+模型架构如下：
+
+![img](https://img-blog.csdnimg.cn/20210118220015871.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3d1emhvbmdxaWFuZw==,size_1,color_FFFFFF,t_70#pic_center)
+
+
+
+首先， DIN模型的输入特征大致上分为了三类： Dense(连续型), Sparse(离散型), VarlenSparse(变长离散型)，也就是指的上面的历史行为数据。而不同的类型特征也就决定了后面处理的方式会不同：
+
+- Dense型特征：由于是数值型了，这里为每个这样的特征建立Input层接收这种输入， 然后拼接起来先放着，等离散的那边处理好之后，和离散的拼接起来进DNN
+- Sparse型特征，为离散型特征建立Input层接收输入，然后需要先通过embedding层转成低维稠密向量，然后拼接起来放着，等变长离散那边处理好之后， 一块拼起来进DNN， 但是这里面要注意有个特征的embedding向量还得拿出来用，就是候选商品的embedding向量，这个还得和后面的计算相关性，对历史行为序列加权。
+- VarlenSparse型特征：这个一般指的用户的历史行为特征，变长数据， 首先会进行padding操作成等长， 然后建立Input层接收输入，然后通过embedding层得到各自历史行为的embedding向量， 拿着这些向量与上面的候选商品embedding向量进入AttentionPoolingLayer去对这些历史行为特征加权合并，最后得到输出。
+
+通过上面的三种处理， 就得到了处理好的连续特征，离散特征和变长离散特征， 接下来把这三种特征拼接，进DNN网络，得到最后的输出结果即可。
+
+
+
+Pipeline：
+
+![DIN_aaaa](http://ryluo.oss-cn-chengdu.aliyuncs.com/%E5%9B%BE%E7%89%87DIN_aaaa.png)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## 三、评价指标
+
+#### 精排阶段：
+
+ctr点击率预测：AUC与logloss
+
+定义&如何计算：https://zhuanlan.zhihu.com/p/280797054
+
+优缺点分析：
+
+
+
+
+
+## 四、常用数据集：
+
+https://www.jianshu.com/p/5c88f4bd7c71
+
+工业上的CTR预测数据集一般都是`multi-group categorial form`的形式，就是类别型特征最为常见，这种数据集一般长这样：
+
+![img](https://img-blog.csdnimg.cn/20210118190044920.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3d1emhvbmdxaWFuZw==,size_1,color_FFFFFF,t_70#pic_center)
+
+这里的亮点就是框出来的那个特征，这个包含着丰富的用户兴趣信息。
+
+对于特征编码，作者这里举了个例子：`[weekday=Friday, gender=Female, visited_cate_ids={Bag,Book}, ad_cate_id=Book]`， 这种情况我们知道一般是通过one-hot的形式对其编码， 转成系数的二值特征的形式。但是这里我们会发现一个`visted_cate_ids`， 也就是用户的历史商品列表， 对于某个用户来讲，这个值是个多值型的特征， 而且还要知道这个特征的长度不一样长，也就是用户购买的历史商品个数不一样多，这个显然。这个特征的话，我们一般是用到multi-hot编码，也就是可能不止1个1了，有哪个商品，对应位置就是1， 所以经过编码后的数据长下面这个样子：![img](https://img-blog.csdnimg.cn/20210118185933510.png)
+
+这个就是喂入模型的数据格式了，这里还要注意一点 就是上面的特征里面没有任何的交互组合，也就是没有做特征交叉。这个交互信息交给后面的神经网络去学习。
+
+
+
+####  Criteo 数据集
+
+Homepage: https://labs.criteo.com/2013/12/download-terabyte-click-logs/https://labs.criteo.com/2013/12/download-terabyte-click-logs/
+
+不同模型效果排名: https://paperswithcode.com/sota/click-through-rate-prediction-on-criteo
