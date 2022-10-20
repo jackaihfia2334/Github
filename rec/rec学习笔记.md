@@ -346,6 +346,36 @@ https://zhuanlan.zhihu.com/p/365690334
 
 
 
+离线存储+线上召回
+
+离线计算物品向量并存入向量数据库，向量数据库建索引以加速最近邻查找，在线计算用户向量
+
+原因在于物品数量过多，计算量太大；并且用户兴趣动态变化，物品特征相对稳定
+
+
+
+![image-20221020160521296](C:\Users\ys\AppData\Roaming\Typora\typora-user-images\image-20221020160521296.png)
+
+
+
+全量更新&增量更新
+
+
+
+![image-20221020160812918](C:\Users\ys\AppData\Roaming\Typora\typora-user-images\image-20221020160812918.png)
+
+![image-20221020160757399](C:\Users\ys\AppData\Roaming\Typora\typora-user-images\image-20221020160757399.png)
+
+
+
+
+
+
+
+
+
+
+
 
 
 
