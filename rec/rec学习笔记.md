@@ -877,17 +877,53 @@ AFM的全称是Attentional Factorization Machines, 从模型的名称上来看�
 
 (Feature Importance and Bilinear feature Interaction)
 
+动机介绍：
+
+第一是大部分模型没有考虑特征重要性，也就是交互之后，没考虑对于预测目标来讲谁更重要，一视同仁。
+
+ 第二是目前的两两特征交互，大部分依然是内积或者哈达玛积， 作者认为还不是细粒度(fine-grained way)交互。
+
+
+
+
+
 背景介绍：
 
-SFNET
+SFNET: 仍然是一种加权平均，压缩重建的过程类似于自编码器AE
 
-Bilnear Interaction
+![image-20210308142624189](https://img-blog.csdnimg.cn/20210703161807139.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3d1emhvbmdxaWFuZw==,size_1,color_FFFFFF,t_70#pic_center)
+
+Bilnear Interaction：一种特征交互方式，可视作内积与哈达玛积的结合
+
+**双线性操作同时可以考虑交互的向量各自的各个维度上的重要性信息， 这应该是作者所说的细粒度，各个维度上的重要性**
+
+![image-20210308142624189](https://img-blog.csdnimg.cn/20210703165031369.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3d1emhvbmdxaWFuZw==,size_1,color_FFFFFF,t_70#pic_center)
+
+有三种类型的双线性交互方式： 
+
+Field-All Type：所有的特征embedding共用一个*W*矩阵
+
+Field-Each Type：每个特征embedding共用一个*W*矩阵， 那么如果有*f*个特征的话，这里的*W**i*需要*f*个。所以这里的参数个数(*f*−1)×*k*×*k*， 这里的*f*−1是因为两两组合之后，比如`[0,1,2]`， 两两组合`[0,1], [0,2], [1,2]`。 这里用到的域是0和1。
+
+Field-Interaction Type：每组特征交互的时候，用一个*W*矩阵， 那么这里如果有*f*个特征的话，就有f*(f-1)/2个
+
+
+
+
+
+
+
+模型结构如下：
+
+![image-20210308142624189](https://img-blog.csdnimg.cn/20210703160140322.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3d1emhvbmdxaWFuZw==,size_1,color_FFFFFF,t_70#pic_center)
+
+
+
+
 
 
 
 #### DIN
-
-
 
 工业上的CTR预测数据集大致的样子：
 
@@ -931,7 +967,7 @@ Pipeline：
 
 
 
-
+#### DIEN
 
 
 
