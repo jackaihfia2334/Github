@@ -1,3 +1,11 @@
+'''
+Author: jackaihfia2334 2598207826@qq.com
+Date: 2022-10-21 14:52:56
+LastEditors: jackaihfia2334 2598207826@qq.com
+LastEditTime: 2022-10-24 19:48:33
+FilePath: \DIN-pytorch1\model.py
+Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+'''
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -27,8 +35,7 @@ class DIN( nn.Module):
         item_historical_embedding = torch.cat( [ material_historical_embedding, category_historical_embedding], dim = 2 )
 
         item_historical_embedding_sum = torch.matmul( mask.unsqueeze( dim = 1), item_historical_embedding).squeeze() / sequential_length.type( mask.type() ).unsqueeze( dim = 1)
-
-
+      
         attention_feature = self.attention_layer( item_embedding, item_historical_embedding, mask)
 
         # combination = torch.cat( [ user_embedding, item_embedding, item_historical_embedding_sum, attention_feature ], dim = 1)

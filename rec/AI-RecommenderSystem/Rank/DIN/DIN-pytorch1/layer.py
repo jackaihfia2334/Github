@@ -2,7 +2,7 @@
 Author: jackaihfia2334 2598207826@qq.com
 Date: 2022-10-21 09:59:36
 LastEditors: jackaihfia2334 2598207826@qq.com
-LastEditTime: 2022-10-21 11:43:18
+LastEditTime: 2022-10-24 19:37:14
 FilePath: \DIN-pytorch1\layer.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
@@ -76,13 +76,13 @@ class AttentionLayer( nn.Module):
         def _dense( in_dim, out_dim):
             return nn.Sequential( nn.Linear( in_dim, out_dim), Activation() )
         
-        dimension_pair = [embedding_dim * 8] + hidden_size  #输入维度是8*embedding
+        dimension_pair = [embedding_dim * 8] + hidden_size  #输入维度是8*embedding  D = 2*embedding
         #输入是 fact, query, fact * query, query - fact 
         #fact = item_historical_embedding
         #query = item_embedding
         layers = [ _dense( dimension_pair[i], dimension_pair[i+1]) for i in range(len( hidden_size))]
         layers.append( nn.Linear( hidden_size[-1], 1) )
-        self.model = nn.Sequential( *layers)
+        self.model = nn.Sequential(*layers)
     
     def forward( self, query, fact, mask, return_scores = False):
         B, T, D = fact.shape
