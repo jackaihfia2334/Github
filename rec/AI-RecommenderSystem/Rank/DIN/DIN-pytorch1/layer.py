@@ -89,6 +89,7 @@ class AttentionLayer( nn.Module):
         
         query = torch.ones((B, T, 1) ).type( query.type() ) * query.view( (B, 1, D)) 
         # query = query.view(-1).expand( T, -1).view( T, B, D).permute( 1, 0, 2)
+        # 把item_embedding扩展为 (B, T, D)
 
         combination = torch.cat( [ fact, query, fact * query, query - fact ], dim = 2)
 

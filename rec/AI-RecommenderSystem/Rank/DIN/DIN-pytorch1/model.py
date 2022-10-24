@@ -36,7 +36,7 @@ class DIN( nn.Module):
                                     # item_embedding * item_historical_embedding_sum, 
                                     attention_feature ], dim = 1)
 
-        scores = self.output_layer( combination)
+        scores = self.output_layer(combination)
 
         return scores.squeeze()
 
