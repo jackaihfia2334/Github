@@ -129,3 +129,83 @@ git show-branch
 ```
 
 
+
+### 4.版本管理
+
+**git reset --hard HEAD这个命令是指重置git到某一个版本**
+
+`git rest --hard HEAD^`：回退到上一版；
+`git rest --hard HEAD^^`：回退到倒数第二版；
+`git rest --hard 3628164`：回退到commit id为3628164的版本；
+ 下面截图展示：
+ 1.在head文件下`git init`初始化，新建文件readme.md,并且提交本地版本库，版本标记为add
+
+![img](https:////upload-images.jianshu.io/upload_images/9403656-56579cd6bf270405.jpg?imageMogr2/auto-orient/strip|imageView2/2/w/580/format/webp)
+
+
+
+
+
+2.修改文件readme.md，加入一行`hello world`,然后提交版本库，第二版命名为hello world
+
+![img](https:////upload-images.jianshu.io/upload_images/9403656-00483c59b9844ee9.jpg?imageMogr2/auto-orient/strip|imageView2/2/w/426/format/webp)
+
+
+
+
+ 3.修改文件readme.md,增加一行代码`I like coding`,提交版本库，第三版命名为 I like coding
+
+![img](https:////upload-images.jianshu.io/upload_images/9403656-b061e2e5fa0a1b69.jpg?imageMogr2/auto-orient/strip|imageView2/2/w/331/format/webp)
+
+
+
+
+ 4.接下来输入命令`git log`,可以看到三个版本的详细信息
+
+![img](https:////upload-images.jianshu.io/upload_images/9403656-2c13df97191233d0.jpg?imageMogr2/auto-orient/strip|imageView2/2/w/501/format/webp)
+
+
+
+
+ 如图，可以看到三个版本的commit id和版本名，我们知道第一版add是新建的readme.md，里面什么都没有；第二版加了一行hello world；第三版加了一行I like coding
+ 5.当前版本commit id是68832，readme.md内容是
+
+![img](https:////upload-images.jianshu.io/upload_images/9403656-b55a00e219d34ad0.jpg?imageMogr2/auto-orient/strip|imageView2/2/w/302/format/webp)
+
+
+
+
+ 6.下面我们输入命令`git reset --hard HEAD^`，然后打开readme.md查看一下
+
+![img](https:////upload-images.jianshu.io/upload_images/9403656-1c600a3aa6ca767b.jpg?imageMogr2/auto-orient/strip|imageView2/2/w/347/format/webp)
+
+
+
+
+ 可以看到输入命令后提示HEAD现在是第二版hello world
+
+![img](https:////upload-images.jianshu.io/upload_images/9403656-b387b5eeccf07287.jpg?imageMogr2/auto-orient/strip|imageView2/2/w/298/format/webp)
+
+
+ readme.md文件打开以后只有hello world，同样证明此时恢复到了第二版
+ 7.输入命令`git reset --hard 68832`，打开readme.md
+
+![img](https:////upload-images.jianshu.io/upload_images/9403656-eb41877090f620a0.jpg?imageMogr2/auto-orient/strip|imageView2/2/w/399/format/webp)
+
+
+
+
+ 可以看到提示回到了第三版，readme.md的内容也变成了第三版
+ 8.输入命令`git rest --hard HEAD^^`,打开readme.md
+
+![img](https:////upload-images.jianshu.io/upload_images/9403656-a12940e45f1d751c.jpg?imageMogr2/auto-orient/strip|imageView2/2/w/325/format/webp)
+
+
+
+![img](https:////upload-images.jianshu.io/upload_images/9403656-76cc31013b1c8c4d.jpg?imageMogr2/auto-orient/strip|imageView2/2/w/327/format/webp)
+
+
+ 可以看到回到了第一版，readme.md里面什么都没有
+
+
+
