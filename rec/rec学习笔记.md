@@ -1097,6 +1097,22 @@ Output Layer：这个就很简单了，上面的用户行为特征， 物品行�
 
 
 
+
+
+####  BST
+
+使用Transformer建模用户行为序列
+
+
+
+
+
+
+
+
+
+
+
 ### 多任务学习
 
 #### 概述
@@ -1135,25 +1151,71 @@ Output Layer：这个就很简单了，上面的用户行为特征， 物品行�
 
 
 
+###### 
+
+#### loss加权融合
+
+一种最简单的实现多任务学习的方式是对不同任务的loss进行加权
+
+eg1：使用加权的交叉熵损失函数，以视频播放时长作为正样本权值，以1作为负样本权值。作者认为按点击率排序会倾向于把诱惑用户点击（用户未必真感兴趣)的视频排前面，而观看时长能更好地反映出用户对视频的兴趣，通过重新设计loss使得该模型在保证主目标点击的同时，将视频观看时长转化为样本的权重，达到优化平均观看时长的效果。
+
+eg2：人工手动调整权值，例如 0.3 x L(点击)+0.7 x L(视频完播)
 
 
 
+这种loss加权的方式优点如下：
+
+- 模型简单，仅在训练时通过梯度乘以样本权重实现对其它目标的加权
+- 模型上线简单，和base完全相同，不需要额外开销
+
+缺点：
+
+- 本质上并不是多目标建模，而是将不同的目标转化为同一个目标。样本的加权权重需要根据AB测试才能确定。
 
 
 
+#### Shared-Bottom
 
+底层共享结构：通过共享底层模块，学习任务间通用的特征表征，再往上针对每一个任务设置一个Tower网络，每个Tower网络的参数由自身对应的任务目标进行学习。Shared Bottom可以根据自身数据特点，使用MLP、DeepFM、DCN、DIN等，Tower网络一般使用简单的MLP。
 
+代码如下，共享特征embedding，共享底层DNN网络，任务输出层独立，loss直接使用多个任务的loss值之和。
 
+```python
+def Shared_Bottom(dnn_feature_columns, num_tasks=None, task_types=None, task_names=None,
+                  bottom_dnn_units=[128, 128], tower_dnn_units_lists=[[64,32], [64,32]],
+                  l2_reg_embedding=0.00001, l2_reg_dnn=0, seed=1024,dnn_dropout=0,
+                  dnn_activation='relu', dnn_use_bn=False):
 
+    features = build_input_features(dnn_feature_columns)
+    inputs_list = list(features.values())
+    
+    sparse_embedding_list, dense_value_list = input_from_feature_columns(features, dnn_feature_columns, l2_reg_embedding,seed)
+    #共享输入特征
+    dnn_input = combined_dnn_input(sparse_embedding_list, dense_value_list)
+    #共享底层网络
+    shared_bottom_output = DNN(bottom_dnn_units, dnn_activation, l2_reg_dnn, dnn_dropout, dnn_use_bn, seed=seed)(dnn_input)
+    #任务输出层
+    tasks_output = []
+    for task_type, task_name, tower_dnn in zip(task_types, task_names, tower_dnn_units_lists):
+        tower_output = DNN(tower_dnn, dnn_activation, l2_reg_dnn, dnn_dropout, dnn_use_bn, seed=seed, name='tower_'+task_name)(shared_bottom_output)
 
+        logit = tf.keras.layers.Dense(1, use_bias=False, activation=None)(tower_output)
+        output = PredictionLayer(task_type, name=task_name)(logit) 
+        tasks_output.append(output)
 
+    model = tf.keras.models.Model(inputs=inputs_list, outputs=tasks_output)
+    return modelCopy to clipboardErrorCopied
+```
 
+优点：
 
+- 浅层参数共享，互相补充学习，任务相关性越高，模型loss优化效果越明显，也可以加速训练。
 
+缺点：
 
+- 任务不相关甚至优化目标相反时（例如新闻的点击与阅读时长），可能会带来负收益，多个任务性能一起下降。
 
-
-
+一般把Shared-Bottom的结构称作**“参数硬共享”**，多任务学习网络结构设计的发展方向便是如何设计更灵活的共享机制，从而实现**“参数软共享”**。
 
 
 
