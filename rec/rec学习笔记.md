@@ -1103,11 +1103,38 @@ Output Layer：这个就很简单了，上面的用户行为特征， 物品行�
 
 使用Transformer建模用户行为序列
 
+**用户行为序列 （UBS: User Behavior Sequence）**蕴含了可以刻画用户兴趣的丰富信息。近两年针对UBS发表了很多优质paper。大部分的UBS建模方式可归结为：
+
+- 朴素简单的 *sum/mean pooling*，工业实践中效果其实还不错。
+- *weight pooling*，关键点是weight的计算方式。例如经典模型 DIN，DIN 使用注意力机制来捕获候选item与用户点击item序列之间的相似性作为weight。
+- RNN类，考虑时序信息。例如阿里随后利用 GRU 捕捉USB中的序列信息，将 DIN 升级为DIEN。
+
+随着 Transformer 在 很多NLP任务中的表现超过RNN，相比RNN也有可并行等独特优势，利用 Transformer 替代RNN 捕捉 序列信息是一个很自然的idea，这也是本文的动机。用户行为序列 + Transformer （更准确地说，应该是Transformer中的 Multi-head Self-attention ），两者天然地很搭。
+
+![img](https://pic2.zhimg.com/v2-93efc96287ba91d822db6fe09e574e65_r.jpg)
 
 
 
+多头注意力机制略。这里有所不同的在于位置编码(PE）
+
+BST通过item embedding 拼接 position embedding的形式引入时序信息
+
+**pos(vi) = timestamp(vt) -timestamp(vi)**
+
+其中 vi 表示用户点击序列中的第i个item，vt 表示当前候选item
 
 
+
+**存在的问题和疑惑：**
+
+1. 文章写的argue动机是，很多模型没有考虑行为序列的时序信息，而DIEN正是解决这个问题，文中却没有提起DIEN和其他相关模型，实验也没有对比。
+2. 没有时间戳用法的相关细节介绍，例如单位以及得到之后如何使用，一个合理做法是是按照取值进行等频分桶。
+3. 实验部分可以更严谨，a.没有公开数据集；b.没有介绍对比算法的参数细节，也没有很多最新算法的离线对比；c.一些重要参数的说明，例如embedding size中4～64的具体细节。
+
+另外，从文中表述看，一个重要细节是用户**行为序列长度固定为N**，**没有进行pooling**，即在Transformer后直接拼接 N*d 喂给NN。因此一个合理推测是，截断取用户最近的N个行为，若用户少于N个行为则直接padding补零向量。如果确实如此，那么又会引出两个问题：
+
+1. 文中参数表中说明序列长度定为20，对于淘宝非常丰富的用户行为场景来说是否显得太小，序列长度延长之后的效果差异与性能差异，文中也没有给出更多细节。
+2. BST 模型采用拼接的方式，那么这里性能的提升究竟是拼接带来的，还是Transformer层带来的？实验中一个更公平的对比是，增加一个实验，WDL(+seq)， DIN 也都直接拼接最后的embdding喂给NN，而不是做pooling。
 
 
 
@@ -1151,9 +1178,7 @@ Output Layer：这个就很简单了，上面的用户行为特征， 物品行�
 
 
 
-###### 
-
-#### loss加权融合
+##### loss加权融合
 
 一种最简单的实现多任务学习的方式是对不同任务的loss进行加权
 
@@ -1174,7 +1199,7 @@ eg2：人工手动调整权值，例如 0.3 x L(点击)+0.7 x L(视频完播)
 
 
 
-#### Shared-Bottom
+##### Shared-Bottom
 
 底层共享结构：通过共享底层模块，学习任务间通用的特征表征，再往上针对每一个任务设置一个Tower网络，每个Tower网络的参数由自身对应的任务目标进行学习。Shared Bottom可以根据自身数据特点，使用MLP、DeepFM、DCN、DIN等，Tower网络一般使用简单的MLP。
 
@@ -1219,6 +1244,60 @@ def Shared_Bottom(dnn_feature_columns, num_tasks=None, task_types=None, task_nam
 
 
 
+#### ESMM
+
+**背景与动机**
+
+传统的CVR预估问题存在着两个主要的问题：**样本选择偏差**和**稀疏数据**。下图的白色背景是曝光数据，灰色背景是点击行为数据，黑色背景是购买行为数据。传统CVR预估使用的训练样本仅为灰色和黑色的数据。
+
+![img](https://pic4.zhimg.com/80/v2-2f0df0f6933dd8405c478fcce91f7b6f_1440w.jpg)
+
+这会导致两个问题：
+
+- 样本选择偏差（sample selection bias，SSB）：如图所示，CVR模型的正负样本集合={点击后未转化的负样本+点击后转化的正样本}，但是线上预测的时候是样本一旦曝光，就需要预测出CVR和CTR以排序，样本集合={曝光的样本}。构建的训练样本集相当于是从一个与真实分布不一致的分布中采样得到的，这一定程度上违背了机器学习中训练数据和测试数据独立同分布的假设。
+- 训练数据稀疏（data sparsity，DS）：点击样本只占整个曝光样本的很小一部分，而转化样本又只占点击样本的很小一部分。如果只用点击后的数据训练CVR模型，可用的样本将极其稀疏。
+
+
+
+ESMM借鉴多任务学习的思路，引入两个辅助任务CTR、CTCVR(已点击然后转化)，同时消除以上两个问题。
+
+三个预测任务如下：
+
+- **pCTR**：p(click=1 | impression)；
+- **pCVR**: p(conversion=1 | click=1,impression)；
+- **pCTCVR**: p(conversion=1, click=1 | impression) = p(click=1 | impression) * p(conversion=1 | click=1, impression)；
+- ![img](https://pic1.zhimg.com/80/v2-7bbeb8767db5d6a157852c8cd4221548_1440w.jpg)
+
+> 注意：其中只有CTR和CVR的label都同时为1时，CTCVR的label才是正样本1。如果出现CTR=0，CVR=1的样本，则为不合法样本，需删除。 pCTCVR是指，当用户已经点击的前提下，用户会购买的概率；pCVR是指如果用户点击了，会购买的概率。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1229,11 +1308,29 @@ def Shared_Bottom(dnn_feature_columns, num_tasks=None, task_types=None, task_nam
 
 #### 精排阶段
 
-ctr点击率预测：AUC与logloss
+CTR(点击率)预测：AUC与logloss
 
 定义&如何计算：https://zhuanlan.zhihu.com/p/280797054
 
 优缺点分析：
+
+
+
+
+
+CVR (Click Value Rate): 转化率
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
