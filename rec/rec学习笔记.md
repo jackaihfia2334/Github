@@ -1211,9 +1211,14 @@ Output Layer：这个就很简单了，上面的用户行为特征， 物品行�
 - 学到通用表达，提高泛化能力：模型学到的是对所有任务都偏好的权重，有助于推广到未来的新任务
 - 正则化：对于一个任务而言，其他任务的学习对该任务有正则化效果
 
+> 多任务学习有效的原因是引入了归纳偏置，两个效果：
+>
+> - 互相促进： 可以把多任务模型之间的关系看作是互相先验知识，也称为归纳迁移，有了对模型的先验假设，可以更好提升模型的效果。解决数据稀疏性其实本身也是迁移学习的一个特性，多任务学习中也同样会体现
+> - 泛化作用：不同模型学到的表征不同，可能A模型学到的是B模型所没有学好的，B模型也有其自身的特点，而这一点很可能A学不好，这样一来模型健壮性更强
 
 
-##### **3.多任务学习研究的问题**
+
+##### 3.多任务学习研究的问题
 
 - 网络结构设计：主要研究哪些参数共享、在什么位置共享、如何共享。这一方向我们认为可以分为两大类，第一类是在设计网络结构时，考虑目标间的显式关系（例如淘宝中，点击之后才有购买行为发生），以阿里提出的ESMM为代表；另一类是目标间没有显示关系（例如短视频中的收藏与分享），在设计模型时不考虑label之间的量化关系，以谷歌提出的MMOE为代表。
 - 多loss的优化策略：主要解决loss数值有大有小、学习速度有快有慢、更新方向时而相反的问题。最经典的两个工作有UWL（Uncertainty Weight）：通过自动学习任务的uncertainty，给uncertainty大的任务小权重，uncertainty小的任务大权重；GradNorm：结合任务梯度的二范数和loss下降梯度，引入带权重的损失函数Gradient Loss，并通过梯度下降更新该权重。
@@ -1390,7 +1395,7 @@ def ESSM(dnn_feature_columns, task_type='binary', task_names=['ctr', 'ctcvr'],
 
 #### MMOE
 
-2018年谷歌提出的，全称是Multi-gate Mixture-of-Experts，
+2018年谷歌提出的，全称是Multi-gate Mixture-of-Experts
 
 
 
@@ -1402,11 +1407,196 @@ def ESSM(dnn_feature_columns, task_type='binary', task_names=['ctr', 'ctcvr'],
 
   ![在这里插入图片描述](https://img-blog.csdnimg.cn/ed10df1df313413daf2a6a6174ef4f8c.png?x-oss-process=image/watermark,type_d3F5LXplbmhlaQ,shadow_50,text_Q1NETiBA57-75rua55qE5bCPQOW8ug==,size_1,color_FFFFFF,t_70,g_se,x_16#pic_center)
 
-  这种方法目前用的也有，比如美团的猜你喜欢，知乎推荐的Ranking等， 这种方法最大的优势是Task越多， 单任务更加不可能过拟合，即可以减少任务之间过拟合的风险。 但是劣势也非常明显，就是底层强制的shared layers难以学习到适用于所有任务的有效表达。 **尤其是任务之间存在冲突的时候**。MMOE中给出了实验结论，当两个任务相关性没那么好(比如排序中的点击率与互动，点击与停留时长)，此时这种结果会遭受训练困境，毕竟所有任务底层用的是同一组参数。
+  这种方法最大的优势是Task越多， 单任务更加不可能过拟合，即可以减少任务之间过拟合的风险。 但是劣势也非常明显，就是底层强制的shared layers难以学习到适用于所有任务的有效表达。 **尤其是任务之间存在冲突的时候**。当两个任务相关性没那么好(比如排序中的点击率与互动，点击与停留时长)，此时这种结果会遭受训练困境，毕竟所有任务底层用的是同一组参数。
 
 - soft parameter sharing: 硬的不行，那就来软的，这个范式对应的结果从`MOE->MMOE->PLE`等。 即底层不是使用共享的一个shared bottom，而是有多个tower， 称为多个专家，然后往往再有一个gating networks在多任务学习时，给不同的tower分配不同的权重，那么这样对于不同的任务，可以允许使用底层不同的专家组合去进行预测，相较于上面所有任务共享底层，这个方式显得更加灵活
 
 - 任务序列依赖关系建模：这种适合于不同任务之间有一定的序列依赖关系。比如电商场景里面的ctr和cvr，其中cvr这个行为只有在点击之后才会发生。所以这种依赖关系如果能加以利用，可以解决任务预估中的样本选择偏差(SSB)和数据稀疏性(DS)问题
+
+  
+
+![在这里插入图片描述](https://img-blog.csdnimg.cn/29c5624f2c8a46c097f097af7dbf4b45.png?x-oss-process=image/watermark,type_d3F5LXplbmhlaQ,shadow_50,text_Q1NETiBA57-75rua55qE5bCPQOW8ug==,size_2,color_FFFFFF,t_70,g_se,x_16#pic_center)
+
+
+
+**混合专家模型**
+
+我们知道共享的这种模型结构，会遭受任务之间冲突而导致可能无法很好的收敛，从而无法学习到任务之间的共同模式。这个结构也可以看成是多个任务共用了一个专家。
+
+先抛开任务关系， 我们发现一个专家在多任务学习上的表达能力很有限，于是乎，尝试引入多个专家，这就慢慢的演化出了混合专家模型。 
+
+![](https://raw.githubusercontent.com/jackaihfia2334/hexo_image_save/master/10.31.2.png)
+
+模型集成思想： 这个东西很像bagging的思路，即训练多个模型进行决策，这个决策的有效性显然要比单独一个模型来的靠谱一点，不管是从泛化能力，表达能力，学习能力上，应该都强于一个模型
+
+1. 注意力思想: 为了增加灵活性， 为不同的模型还学习了重要性权重，这可能考虑到了在学习任务的共性模式上， 不同的模型学习的模式不同，那么聚合的时候，显然不能按照相同的重要度聚合，所以为各个专家学习权重，默认了不同专家的决策地位不一样。这个思想目前不过也非常普遍了。
+2. multi-head机制: 从另一个角度看， 多个专家其实代表了多个不同head, 而不同的head代表了不同的非线性空间，之所以说表达能力增强了，是因为把输入特征映射到了不同的空间中去学习任务之间的共性模式。可以理解成从多个角度去捕捉任务之间的共性特征模式。
+
+MOE使用了多个混合专家增加了各种表达能力，但是， 一个门控并不是很灵活，因为这所有的任务，最终只能选定一组专家组合，即这个专家组合是在多个任务上综合衡量的结果，并没有针对性了。 如果这些任务都比较相似，那就相当于用这一组专家组合确实可以应对这多个任务，学习到多个相似任务的共性。 但如果任务之间差的很大，这种单门控控制的方式就不行了，因为此时底层的多个专家学习到的特征模式相差可能会很大，毕竟任务不同，而单门控机制选择专家组合的时候，肯定是选择出那些有利于大多数任务的专家， 而对于某些特殊任务，可能学习的一塌糊涂。
+
+所以，这种方式的缺口很明显，这样，也更能理解为啥提出多门控控制的专家混合模型了。
+
+
+
+**MMOE结构**
+
+![](https://raw.githubusercontent.com/jackaihfia2334/hexo_image_save/master/10.31.1.png)
+
+这个改造看似很简单，只是在OMOE上额外多加了几个门控网络，但是却起到了杠杆般的效果，我这里分享下我的理解。
+
+- 首先，就刚才分析的OMOE的问题，在专家组合选取上单门控会产生限制，此时如果多个任务产生了冲突，这种结构就无法进行很好的权衡。 而MMOE就不一样了。MMOE是针对每个任务都单独有个门控选择专家组合，那么即使任务冲突了，也能根据不同的门控进行调整，选择出对当前任务有帮助的专家组合。所以，我觉得单门控做到了**针对所有任务在专家选择上的解耦**，而多门控做到了**针对各个任务在专家组合选择上的解耦**。
+- 多门控机制能够建模任务之间的关系了。如果各个任务都冲突， 那么此时有多门控的帮助， 此时让每个任务独享一个专家，如果任务之间能聚成几个相似的类，那么这几类之间应该对应的不同的专家组合，那么门控机制也可以选择出来。如果所有任务都相似，那这几个门控网络学习到的权重也会相似，所以这种机制把任务的无关，部分相关和全相关进行了一种统一。
+- 灵活的参数共享， 这个我们可以和hard模式或者是针对每个任务单独建模的模型对比，对于hard模式，所有任务共享底层参数，而每个任务单独建模，是所有任务单独有一套参数，算是共享和不共享的两个极端，对于都共享的极端，害怕任务冲突，而对于一点都不共享的极端，无法利用迁移学习的优势，模型之间没法互享信息，互为补充，容易遭受过拟合的困境，另外还会增加计算量和参数量。 而MMOE处于两者的中间，既兼顾了如果有相似任务，那就参数共享，模式共享，互为补充，如果没有相似任务，那就独立学习，互不影响。 又把这两种极端给进行了统一。
+- 训练时能快速收敛，这是因为相似的任务对于特定的专家组合训练都会产生贡献，这样进行一轮epoch，相当于单独任务训练时的多轮epoch。
+
+
+
+**MMOE网络的搭建逻辑**
+
+首先是传入封装好的dnn_features_columns
+
+就是数据集先根据特征类别分成离散型特征和连续型特征，然后通过sparseFeat或者DenseFeat进行封装起来，组成的一个列表。
+
+```python
+dnn_features_columns = [SparseFeat(feat, feature_max_idx[feat], embedding_dim=4) for feat in sparse_features] \
+                         + [DenseFeat(feat, 1) for feat in dense_features]Copy to clipboardErrorCopied
+```
+
+
+
+传入之后， 首先为这所有的特征列建立Input层，然后选择出离散特征和连续特征来，连续特征直接拼接即可， 而离散特征需要过embedding层得到连续型输入。把这个输入与连续特征拼接起来，就得到了送入专家的输入。
+
+接下来，建立MMOE的多个专家， 这里的专家直接就是DNN，当然这个可以替换，比如MOSE里面就用了LSTM，这样的搭建模型方式非常灵活，替换起来非常简单。 把输入过多个专家得到的专家的输出，这里放到了列表里面。
+
+接下来，建立多个门控网络，由于MMOE里面是每个任务会有一个单独的门控进行控制，所以这里的门控网络个数和任务数相同，门控网络也是DNN，接收输入，得到专家个输出作为每个专家的权重，把每个专家的输出加权组合得到门控网络最终的输出，放到列表中，这里的列表长度和task_num对应。
+
+接下来， 为每个任务建立tower，学习特定的feature信息。同样也是DNN，接收的输入是上面列表的输出，每个任务的门控输出输入到各自的tower里面，得到最终的输出即可。 最终的输出也是个列表，对应的每个任务最终的网络输出值。
+
+
+
+```python
+def MMOE(dnn_feature_columns, num_experts=3, expert_dnn_hidden_units=(256, 128), tower_dnn_hidden_units=(64,),
+        gate_dnn_hidden_units=(), l2_reg_embedding=0.00001, l2_reg_dnn=0, dnn_dropout=0, dnn_activation='relu',
+        dnn_use_bn=False, task_types=('binary', 'binary'), task_names=('ctr', 'ctcvr')):
+    
+    num_tasks = len(task_names)
+    
+    # 构建Input层并将Input层转成列表作为模型的输入
+    input_layer_dict = build_input_layers(dnn_feature_columns)
+    input_layers = list(input_layer_dict.values())
+    
+    # 筛选出特征中的sparse和Dense特征， 后面要单独处理
+    sparse_feature_columns = list(filter(lambda x: isinstance(x, SparseFeat), dnn_feature_columns))
+    dense_feature_columns = list(filter(lambda x: isinstance(x, DenseFeat), dnn_feature_columns))
+    
+    # 获取Dense Input
+    dnn_dense_input = []
+    for fc in dense_feature_columns:
+        dnn_dense_input.append(input_layer_dict[fc.name])
+    
+    # 构建embedding字典
+    embedding_layer_dict = build_embedding_layers(dnn_feature_columns)
+    # 离散的这些特特征embedding之后，然后拼接，然后直接作为全连接层Dense的输入，所以需要进行Flatten
+    dnn_sparse_embed_input = concat_embedding_list(sparse_feature_columns, input_layer_dict, embedding_layer_dict, flatten=False)
+    
+    # 把连续特征和离散特征合并起来
+    dnn_input = combined_dnn_input(dnn_sparse_embed_input, dnn_dense_input)
+    
+    # 建立专家层
+    expert_outputs = []
+    for i in range(num_experts):
+        expert_network = DNN(expert_dnn_hidden_units, dnn_activation, l2_reg_dnn, dnn_dropout, dnn_use_bn, seed=2022, name='expert_'+str(i))(dnn_input)
+        expert_outputs.append(expert_network)
+    
+    expert_concat = Lambda(lambda x: tf.stack(x, axis=1))(expert_outputs)
+    
+    # 建立多门控机制层
+    mmoe_outputs = []
+    for i in range(num_tasks):  # num_tasks=num_gates
+        # 建立门控层
+        gate_input = DNN(gate_dnn_hidden_units, dnn_activation, l2_reg_dnn, dnn_dropout, dnn_use_bn, seed=2022, name='gate_'+task_names[i])(dnn_input)
+        gate_out = Dense(num_experts, use_bias=False, activation='softmax', name='gate_softmax_'+task_names[i])(gate_input)
+        gate_out = Lambda(lambda x: tf.expand_dims(x, axis=-1))(gate_out)
+        
+        # gate multiply the expert
+        gate_mul_expert = Lambda(lambda x: reduce_sum(x[0] * x[1], axis=1, keep_dims=False), name='gate_mul_expert_'+task_names[i])([expert_concat, gate_out])
+        
+        mmoe_outputs.append(gate_mul_expert)
+    
+    # 每个任务独立的tower
+    task_outputs = []
+    for task_type, task_name, mmoe_out in zip(task_types, task_names, mmoe_outputs):
+        # 建立tower
+        tower_output = DNN(tower_dnn_hidden_units, dnn_activation, l2_reg_dnn, dnn_dropout, dnn_use_bn, seed=2022, name='tower_'+task_name)(mmoe_out)
+        logit = Dense(1, use_bias=False, activation=None)(tower_output)
+        output = PredictionLayer(task_type, name=task_name)(logit)
+        task_outputs.append(output)
+    
+    model = Model(inputs=input_layers, outputs=task_outputs)
+    return modelCopy to clipboardErrorCopied
+```
+
+
+
+**存在的问题**
+
+- MMOE中所有的Expert是被所有任务所共享，这可能无法捕捉到任务之间更复杂的关系，从而给部分任务带来一定的噪声。
+- 在复杂任务机制下，MMOE不同专家在不同任务的权重学的差不多
+- 不同的Expert之间没有交互，联合优化的效果有所折扣
+
+
+
+
+
+#### PLE
+
+PLE(Progressive Layered Extraction)模型由腾讯PCG团队在2020年提出，主要为了解决跷跷板问题
+
+**背景与动机**
+
+文章首先提出多任务学习中不可避免的两个缺点：
+
+- 负迁移（Negative Transfer）：针对相关性较差的任务，使用shared-bottom这种硬参数共享的机制会出现负迁移现象，不同任务之间存在冲突时，会导致模型无法有效进行参数的学习，不如对多个任务单独训练。
+- 跷跷板现象（Seesaw Phenomenon）：针对相关性较为复杂的场景，通常不可避免出现跷跷板现象。多任务学习模式下，往往能够提升一部分任务的效果，但同时需要牺牲其他任务的效果。即使通过MMOE这种方式减轻负迁移现象，跷跷板问题仍然广泛存在。
+
+在腾讯视频推荐场景下，有两个核心建模任务：
+
+- VCR(View Completion Ratio)：播放完成率，播放时间占视频时长的比例，回归任务
+- VTR(View Through Rate) ：有效播放率，播放时间是否超过某个阈值，分类任务
+
+这两个任务之间的关系是复杂的，在应用以往的多任务模型中发现，要想提升VTR准确率，则VCR准确率会下降，反之亦然。
+
+
+
+
+
+，PLE在网络结构设计上提出两大改进：
+
+**一、CGC**(Customized Gate Control) 定制门控
+
+PLE将共享的部分和每个任务特定的部分**显式的分开**，强化任务自身独立特性。把MMOE中提出的Expert分成两种，任务特定task-specific和任务共享task-shared。保证expert“各有所得”，更好的降低了弱相关性任务之间参数共享带来的问题。
+
+网络结构如图所示，同样的特征输入分别送往三类不同的专家模型（任务A专家、任务B专家、任务共享专家），再通过门控机制加权聚合之后输入各自的Tower网络。门控网络，把原始数据和expert网络输出共同作为输入，通过单层全连接网络+softmax激活函数，得到分配给expert的加权权重，与attention机制类型。
+
+![img](https://pic3.zhimg.com/80/v2-c92975f7c21cc568a13cd9447adc757a_1440w.jpg)
+
+任务A有 ![[公式]](https://www.zhihu.com/equation?tex=m_A) 个expert，任务B有 ![[公式]](https://www.zhihu.com/equation?tex=m_B) 个expert，另外还有 ![[公式]](https://www.zhihu.com/equation?tex=m_S) 个任务A、B共享的Expert。这样对Expert做一个**显式的分割**，可以让task-specific expert只受自己任务梯度的影响，不会受到其他任务的干扰（每个任务保底有一个独立的网络模型)，而只有task-shared expert才受多个任务的混合梯度影响。
+
+MMOE则是将所有Expert一视同仁，都加权输入到每一个任务的Tower，其中任务之间的关系完全交由gate自身进行学习。虽然MMOE提出的门控机制理论上可以捕捉到任务之间的关系，比如任务A可能与任务B确实无关，则MMOE中gate可以学到，让个别专家对于任务A的权重趋近于0，近似得到PLE中提出的task-specific expert。**如果说MMOE是希望让expert网络可以对不同的任务各有所得，则PLE是保证让expert网络各有所得。**
+
+
+
+二、**PLE** (progressive layered extraction) 分层萃取
+
+PLE就是上述CGC网络的多层纵向叠加，以获得更加丰富的表征能力。在分层的机制下，Gate设计成两种类型，使得不同类型Expert信息融合交互。task-share gate融合所有Expert信息，task-specific gate只融合specific expert和share expert。模型结构如图：
+
+![img](https://pic2.zhimg.com/80/v2-ff3b4aff3511e6e56a3b509f244c5ab1_1440w.jpg)
+
+将任务A、任务B和shared expert的输出输入到下一层，下一层的gate是以这三个上一层输出的结果作为门控的输入，而不是用原始input特征作为输入。这使得gate同时融合task-shares expert和task-specific expert的信息，论文实验中证明这种不同类型expert信息的交叉，可以带来更好的效果。
+
+三、多任务loss联合优化
+
+
 
 
 
