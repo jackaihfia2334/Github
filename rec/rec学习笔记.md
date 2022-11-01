@@ -88,6 +88,12 @@
 
 **新颖度**：用推荐列表中物品的平均流行度度量推荐结果的新颖度。 如果推荐出的物品都很热门， 说明推荐的新颖度较低。
 
+
+
+
+
+
+
 #### 协同过滤算法
 
 ##### 基本思想
@@ -103,6 +109,12 @@
 
 重点是**计算相似度**     实现代码见jupyter notebook   **rec_test**
 
+
+
+
+
+
+
 ##### 相似性度量方法
 
 1. **杰卡德（Jaccard）相似系数**     适用于隐式反馈数据（0-1）
@@ -115,6 +127,10 @@
    - 不适合用作计算布尔值向量（0-1）之间相关度。
    
    from  scipy.stats  import  pearsonr
+
+
+
+
 
 ##### UserCF算法（基于用户的协同过滤算法）
 
@@ -136,11 +152,19 @@
 - 基于用户的协同过滤需要维护用户相似度矩阵以便快速的找出 TopN*T**o**pN* 相似用户， 该矩阵的存储开销非常大，存储空间随着用户数量的增加而增加。
 - 故不适合用户数据量大的情况使用
 
+
+
+
+
 ##### UserCF算法（基于用户的协同过滤算法）
 
 ItemCF算法并不利用物品的内容属性计算物品之间的相似度， 主要通过分析用户的行为记录计算物品之间的相似度， 该算法认为， 物品 A 和物品 C 具有很大的相似度是因为喜欢物品 A 的用户极可能喜欢物品 C。
 
 和基于内容的推荐算法(Content-Based Recommendation)进行区分！
+
+
+
+
 
 ##### 协同过滤算法的问题分析
 
@@ -189,6 +213,18 @@ ItemCF算法并不利用物品的内容属性计算物品之间的相似度， �
 > - 这种情况下，可以考虑使用皮尔逊相关系数计算用户之间的相似性关系。
 
 
+
+##### 协同过滤算法的缺点
+
+1.冷启动问题
+
+2.数据稀疏性问题
+
+3.可扩展性问题
+
+4.静态建模，受热门物品影响，易推荐同质化物品
+
+https://blog.csdn.net/xue208212674/article/details/107789809
 
 
 
@@ -395,6 +431,280 @@ https://zhuanlan.zhihu.com/p/365690334
 ![image-20221020160812918](C:\Users\ys\AppData\Roaming\Typora\typora-user-images\image-20221020160812918.png)
 
 ![image-20221020160757399](C:\Users\ys\AppData\Roaming\Typora\typora-user-images\image-20221020160757399.png)
+
+
+
+
+
+#### **基于图的召回**
+
+##### EGES
+
+由于用户和项目的数十亿规模，传统的方法已经不能满足于实际的需求，主要的问题体现在三个方面：
+
+- 可扩展性：现有的推荐方法无法扩展到在拥有十亿的用户和二十亿商品的淘宝中。
+- **稀疏性**：存在大量的物品与用户的交互行为稀疏。即用户的交互到多集中于以下部分商品，存在大量商品很少被用户交互。
+- **冷启动**：在淘宝中，每分钟会上传很多新的商品，由于这些商品没有用户行为的信息（点击、购买等），无法进行很好的预测。
+
+##### PinSAGE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#### 基于序列的召回
+
+##### MIND
+
+背景与动机：
+
+作者基于天猫的实际场景出发的发现，每个用户每天与数百种产品互动， 而互动的产品往往来自于很多个类别，这就说明用户的兴趣极其广泛，**用一个向量是无法表示这样广泛的兴趣的**。有没有可能用多个向量来表示用户的多种兴趣呢？以往的解决方案如下：
+
+- 协同过滤的召回方法(itemcf和usercf)是通过历史交互过的物品或隐藏因子直接表示用户兴趣， 但会遇到稀疏或计算问题
+
+- 基于深度学习的方法用低维的embedding向量表示用户，比如YoutubeDNN召回模型，双塔模型等，都是把用户的基本信息，或者用户交互过的历史商品信息等，过一个全连接层，最后编码成一个向量，用这个向量来表示用户兴趣，但作者认为，这是多兴趣表示的瓶颈，因为需要压缩所有与用户多兴趣相关的信息到一个表示向量，所有用户多兴趣的信息进行了混合，导致这种多兴趣并无法体现，所以往往召回回来的商品并不是很准确，除非向量维度很大，但是大维度又会带来高计算。
+
+- DIN模型在Embedding的基础上加入了Attention机制，来选择的捕捉用户兴趣的多样性，但采用Attention机制，对于每个目标物品，都需要重新计算用户表示，这在召回阶段是行不通的(海量)，所以DIN一般是用于排序。
+
+  
+
+  MIND为了推断出用户的多兴趣表示，提出了一个多兴趣提取层，该层使用动态路由机制自动的能将用户的历史行为聚类，然后每个类簇中产生一个表示向量，这个向量能代表用户某种特定的兴趣，而多个类簇的多个向量合起来，就能表示用户广泛的兴趣。
+
+  ![在这里插入图片描述](https://img-blog.csdnimg.cn/33b251f8dcb242ad82b2ed0313f6df73.png?x-oss-process=image/watermark,type_d3F5LXplbmhlaQ,shadow_50,text_Q1NETiBA57-75rua55qE5bCPQOW8ug==,size_2,color_FFFFFF,t_70,g_se,x_16#pic_center)
+
+  
+  
+  核心是多兴趣提取层(Multi-interest extractor layer)， 而这里面重点是动态路由与胶囊网络。
+  
+  
+
+**胶囊网络**
+
+胶囊网络其实可以和神经网络对比着看可能更好理解。神经网络的每一层的神经元输出的是单个的标量值，接收的输入，也是多个标量值，所以这是一种value to value的形式，而胶囊网络每一层的胶囊输出的是一个向量值，接收的输入也是多个向量，所以它是vector to vector形式的。
+
+![在这里插入图片描述](https://img-blog.csdnimg.cn/1f698efd1f7e4b76babb061e52133e45.png?x-oss-process=image/watermark,type_d3F5LXplbmhlaQ,shadow_50,text_Q1NETiBA57-75rua55qE5bCPQOW8ug==,size_2,color_FFFFFF,t_70,g_se,x_16#pic_center)
+
+有两点需要注意：
+
+1. 这里的W^i参数是可学习的，和神经网络一样， 通过BP算法更新
+2. 这里的c_i参数不是BP算法学习出来的，而是采用动态路由机制现场算出来的，这个非常类似于pooling层，我们知道pooling层的参数也不是学习的，而是根据前面的输入现场取最大或者平均计算得到的
+
+
+
+**动态路由机制原理**
+
+![在这里插入图片描述](https://img-blog.csdnimg.cn/82746b6ff8ac47fab6a89788d8d50f9e.png?x-oss-process=image/watermark,type_d3F5LXplbmhlaQ,shadow_50,text_Q1NETiBA57-75rua55qE5bCPQOW8ug==,size_1,color_FFFFFF,t_70,g_se,x_16#pic_center)
+
+
+
+下面是上述过程的展开计算过程， 这个和RNN的计算有点类似：
+
+![在这里插入图片描述](https://img-blog.csdnimg.cn/c189e1258de64e42b576884844e718a4.png?x-oss-process=image/watermark,type_d3F5LXplbmhlaQ,shadow_50,text_Q1NETiBA57-75rua55qE5bCPQOW8ug==,size_1,color_FFFFFF,t_70,g_se,x_16#pic_center)
+
+
+
+
+
+
+
+
+
+**Multi-Interest Extractor Layer**
+
+
+
+![在这里插入图片描述](https://img-blog.csdnimg.cn/02fd2e79c97c4345bb228b3bb2eb517c.png?x-oss-process=image/watermark,type_d3F5LXplbmhlaQ,shadow_50,text_Q1NETiBA57-75rua55qE5bCPQOW8ug==,size_2,color_FFFFFF,t_70,g_se,x_16#pic_center)
+$$
+\begin{array}{c}
+w_{i j}=\frac{\exp b_{i j}}{\sum_{k=1}^{m} \exp b_{i k}} \\
+\vec{z}_{j}^{h}=\sum_{i=1}^{m} w_{i j} S_{i j} \vec{c}_{i}^{l} \\
+\vec{c}_{j}^{h}=\operatorname{squash}\left(\vec{z}_{j}^{h}\right)=\frac{\left\|\vec{z}_{j}^{h}\right\|^{2}}{1+\left\|\vec{z}_{j}^{h}\right\|^{2}} \frac{\vec{z}_{j}^{h}}{\left\|\vec{z}_{j}^{h}\right\|} \\
+b_{i j}=\left(\vec{c}_{j}^{h}\right)^{T} \mathrm{~S}_{i j} \vec{c}_{i}^{l}
+\end{array}
+$$
+
+
+**B2I动态路由**
+
+1. **共享双向映射矩阵**。在初始动态路由中，使用固定的或者说共享的双线性映射矩阵S而不是单独的双线性映射矩阵， 在原始的动态路由中，对于每个输出胶囊都会有对应的S，而这里是每个输出胶囊，都共用一个S矩阵。 原因有两个：
+
+   1. 用户行为是可变长度的，从几十个到几百个不等，因此使用共享的双线性映射矩阵是有利于泛化。
+   2. 希望兴趣胶囊在同一个向量空间中，但不同的双线性映射矩阵将兴趣胶囊映射到不同的向量空间中。因为映射矩阵的作用就是对用户的行为胶囊进行线性映射， 由于用户的行为序列都是商品，所以希望经过映射之后，到统一的商品向量空间中去。
+
+2. **随机初始化路由对数**。
+
+   由于利用共享双向映射矩阵S，如果再初始化路由对数为0将导致相同的初始的兴趣胶囊。
+   $$
+   \begin{array}{c}w_{i j}=\frac{\exp b_{i j}}{\sum_{k=1}^{m} \exp b_{i k}} \\\vec{z}_{j}^{h}=\sum_{i=1}^{m} w_{i j} S_{i j} \vec{c}_{i}^{l} \\\end{array}
+   $$
+   随后的迭代将陷入到一个不同兴趣胶囊在所有的时间保持相同的情景。因为每个输出胶囊的运算都一样了。为了减轻这种现象，作者通过高斯分布进行随机采样来初始化路由对数，让初始兴趣胶囊与其他每一个不同，其实就是希望在计算每个输出胶囊的时候，通过随机化的方式，希望这几个聚类中心离得远一点，这样才能表示出广泛的用户兴趣。
+
+3. **动态的兴趣数量**，兴趣数量就是聚类中心的个数，由于不同用户的历史行为序列不同，那么相应的，其兴趣胶囊有可能也不一样多，所以这里使用了一种启发式方式自适应调整聚类中心的数量，即K值。
+
+$$
+K_{u}^{\prime}=\max \left(1, \min \left(K, \log _{2}\left(\left|\mathcal{I}_{u}\right|\right)\right)\right)
+$$
+
+
+
+**Label-aware Attention Layer**
+
+通过多兴趣提取器层，从用户的行为embedding中生成多个兴趣胶囊。不同的兴趣胶囊代表用户兴趣的不同方面，相应的兴趣胶囊用于评估用户对特定类别的偏好。所以，在训练的期间，最后需要设置一个Label-aware的注意力层，对于当前的商品，根据相关性选择最相关的兴趣胶囊。这里其实就是一个普通的注意力机制，和DIN里面的那个注意力层基本上是一模一样，计算公式如下：
+$$
+\begin{aligned}
+\overrightarrow{\boldsymbol{v}}_{u} &=\operatorname{Attention}\left(\overrightarrow{\boldsymbol{e}}_{i}, \mathrm{~V}_{u}, \mathrm{~V}_{u}\right) \\
+&=\mathrm{V}_{u} \operatorname{softmax}\left(\operatorname{pow}\left(\mathrm{V}_{u}^{\mathrm{T}} \vec{e}_{i}, p\right)\right)
+\end{aligned}
+$$
+训练结束后，抛开label-aware注意力层，MIND网络得到一个用户表示映射函数f_{user}。在服务期间，用户的历史序列与自身属性喂入到 f_{user}，每个用户得到多兴趣向量。然后这个表示向量通过一个近似邻近方法来检索top N物品。
+
+
+
+
+
+
+
+
+
+##### SDM
+
+**SDM**(Sequential Deep Matching Model) 是以会话为单位，对长序列进行切分。依据是用户在同一个Session下，其需求往往很明确，交互的商品也往往都非常类似。 但是Session与Session之间，商品类型可能骤变。 （DSIN也是这个思路）
+
+**背景与动机**
+
+- 动机： 召回模型需要捕获用户的动态兴趣变化，这个过程中利用好用户的长期行为和短期偏好非常关键，而以往的模型有下面几点不足：
+
+  - 协同过滤模型： 基于用户的交互进行**静态建模**，无法感知用户的兴趣变化过程，易召回同质性的商品
+
+  - 早期的一些序列推荐模型: 要么是对整个长序列直接建模，但这样太暴力，没法很好的学习商品之间的序列信息，有些是**把长序列分成会话**，但忽视了**一个会话中用户的多重兴趣**
+
+  - 有些方法在考虑用户的长期行为方面，只是简单的拼接或者加权求和，而实际上**用户长期行为中只有很少一小部分对当前的预测有用**，这样暴力融合反而会适得其反，起不到效果。另外还有一些多任务或者对抗方法， 在工业场景中不适用等。
+
+    
+
+- 亮点:
+
+  - SDM模型， 考虑了用户的短期行为和长期兴趣，以会话的形式进行分割，并对这两方面分别建模
+  - 短期会话由于对当前决策影响比较大，那就学习的全面一点， 首先RNN学习序列关系，其次通过多头注意力机制捕捉多兴趣，然后通过一个Attention Net加权得到短期兴趣表示
+  - 长期会话通过Attention Net融合，然后过DNN，得到用户的长期表示
+  - 设计了一个门控机制，类似于LSTM的那种门控，能巧妙的融合这两种兴趣，得到用户最终的表示向量
+
+![在这里插入图片描述](https://img-blog.csdnimg.cn/d297bf36d8c54b349dc666259b891927.png?x-oss-process=image/watermark,type_d3F5LXplbmhlaQ,shadow_50,text_Q1NETiBA57-75rua55qE5bCPQOW8ug==,size_2,color_FFFFFF,t_70,g_se,x_16#pic_center)
+
+
+
+
+
+
+
+
+
+**Input Embedding with side Information**
+$$
+所以，假设用户的短期行为是  \mathcal{S}^{u}=\left[i_{1}^{u}, \ldots, i_{t}^{u}, \ldots, i_{m}^{u}\right] ,\\
+
+这里面的每个商品i_{t}^{u}  其实有5个属性表示了，\\每个属性本质是ID，但转成embedding之 后，就得到了5个embedding，\\
+所以这里就涉及到了融合问题。这里用  e_{i_{t}^{u}} \in \mathbb{R}^{d \times 1}  来表示每个  i_{t}^{u}  ，但这里不是embedding的pooling操作，\\而是 Concat
+
+\boldsymbol{e}_{i_{t}^{u}}=\operatorname{concat}\left(\left\{\boldsymbol{e}_{i}^{f} \mid f \in \mathcal{F}\right\}\right)\\
+
+其中，  \boldsymbol{e}_{i}^{f}=\boldsymbol{W}^{f} \boldsymbol{x}_{i}^{f} \in \mathbb{R}^{d_{f} \times 1}  ， \\
+
+这个公式看着复杂，其实就是每个side info的id过embedding layer得到各自的embedding。\\
+这里embedding的维 度是  d_{f}  ，等拼接起来之后，就是  d  维了。这个点要注意。\\
+
+另外就是用户的base表示向量了，这个很简单，就是用户的基础画像，\\得到embedding，直接也是Concat，
+
+\boldsymbol{e}_{u}=\operatorname{concat}\left(\left\{\boldsymbol{e}_{u}^{p} \mid p \in \mathcal{P}\right\}\right)\\
+ e_{u}^{p}  是特征  p  的embedding。
+$$
+**短期用户行为建模**
+
+
+
+先过LSTM对行为序列关系建模
+$$
+\begin{aligned}
+\boldsymbol{i} \boldsymbol{n}_{t}^{u} &=\sigma\left(\boldsymbol{W}_{i n}^{1} \boldsymbol{e}_{i t}^{u}+\boldsymbol{W}_{i n}^{2} \boldsymbol{h}_{t-1}^{u}+b_{i n}\right) \\
+f_{t}^{u} &=\sigma\left(\boldsymbol{W}_{f}^{1} \boldsymbol{e}_{i t}^{u}+\boldsymbol{W}_{f}^{2} \boldsymbol{h}_{t-1}^{u}+b_{f}\right) \\
+\boldsymbol{o}_{t}^{u} &=\sigma\left(\boldsymbol{W}_{o}^{1} \boldsymbol{e}_{i}^{u}+\boldsymbol{W}_{o}^{2} \boldsymbol{h}_{t-1}^{u}+b_{o}\right) \\
+\boldsymbol{c}_{t}^{u} &=\boldsymbol{f}_{t} \boldsymbol{c}_{t-1}^{u}+\boldsymbol{i} \boldsymbol{n}_{t}^{u} \tanh \left(\boldsymbol{W}_{c}^{1} \boldsymbol{e}_{i_{t}^{u}}+\boldsymbol{W}_{c}^{2} \boldsymbol{h}_{t-1}^{u}+b_{c}\right) \\
+\boldsymbol{h}_{t}^{u} &=\boldsymbol{o}_{t}^{u} \tanh \left(\boldsymbol{c}_{t}^{u}\right)
+\end{aligned}
+$$
+得到X^u，再过多头注意力机制，学习短期用户行为的多兴趣。设有h个head，则每个头中的向量维度是d/h
+$$
+\hat{X}^{u}=\operatorname{MultiHead}\left(X^{u}\right)=W^{O} \text { concat }\left(\text { head }_{1}^{u}, \ldots, \text { head }{ }_{h}^{u}\right)
+$$
+接下来再过一个User Attention， 因为作者发现，对于相似历史行为的不同用户，其兴趣偏好也不太一样。 所以加入这个用户Attention层，想挖掘更细粒度的用户个性化信息。加权求和得最终向量，维度是d。
+$$
+\begin{aligned}
+\alpha_{k} &=\frac{\exp \left(\hat{\boldsymbol{h}}_{k}^{u T} \boldsymbol{e}_{u}\right)}{\sum_{k=1}^{t} \exp \left(\hat{\boldsymbol{h}}_{k}^{u T} \boldsymbol{e}_{u}\right)} \\
+\boldsymbol{s}_{t}^{u} &=\sum_{k=1}^{t} \alpha_{k} \hat{\boldsymbol{h}}_{k}^{u}
+\end{aligned}
+$$
+**长期用户行为建模**
+
+长期来看，用户多种维度积累的兴趣会对当下行为产生影响，因此此部分旨在捕捉用户的长期兴趣，分为两个部分，**用户注意力层与特征拼接**
+
+长期行为这里，是从特征的维度进行聚合，把用户的历史长序列分成了多个特征，比如用户历史点击过的商品，历史逛过的店铺，历史看过的商品的类别，品牌等，分成了多个特征子集，然后这每个特征子集里面有对应的id，比如商品有商品id, 店铺有店铺id等，对于每个子集，过user Attention layer，和用户的base向量求Attention， 相当于看看用户喜欢逛啥样的商店， 喜欢啥样的品牌，啥样的商品类别等等，得到每个子集最终的表示向量。
+$$
+\begin{aligned}
+\alpha_{k} &=\frac{\exp \left(\boldsymbol{g}_{k}^{u T} \boldsymbol{e}_{u}\right)}{\sum_{k=1}^{\left|\mathcal{L}_{f}^{u}\right|} \exp \left(\boldsymbol{g}_{k}^{u T} \boldsymbol{e}_{u}\right)} \\
+z_{f}^{u} &=\sum_{k=1}^{\left|\mathcal{L}_{f}^{u}\right|} \alpha_{k} \boldsymbol{g}_{k}^{u}
+\end{aligned}
+$$
+
+$$
+\begin{array}{l}
+然后对这些子集表示向量进行拼接，过一个全连接层输出最终d维长期行为表示向量\\
+z^{u}=\operatorname{concat}\left(\left\{z_{f}^{u} \mid f \in \mathcal{F}\right\}\right) \\
+\boldsymbol{p}^{u}=\tanh \left(\boldsymbol{W}^{p} z^{u}+b\right)
+\end{array}
+$$
+
+
+
+
+
+**长短期融合**
+
+长短期兴趣融合这里，作者发现之前模型往往喜欢直接拼接起来，或者加和，注意力加权等，但作者认为这样不能很好的将两类兴趣融合起来，因为长期序列里面，其实只有很少的一部分行为和当前有关。那么这样的话，直接无脑融合是有问题的。所以这里作者用了一种较为巧妙的方式，即门控机制：
+$$
+\begin{array}{c}
+G_{t}^{u}=\underset{o_{t}^{u}}{\operatorname{sigmoid}}\left(\boldsymbol{W}^{1} \boldsymbol{e}_{u}+\boldsymbol{W}^{2} s_{t}^{u}+\boldsymbol{W}^{3} \boldsymbol{p}^{u}+b\right) \\
+\left(1-G_{t}^{u}\right) \odot p^{u}+G_{t}^{u} \odot s_{t}^{u}
+\end{array}
+$$
+这个和LSTM的这种门控机制很像，首先门控接收的输入有用户画像e_u，用户短期兴趣s_t^u，用户长期兴趣p^u。经过sigmoid函数得到了G_{t}^{u} ，用来决定在t时刻短期和长期兴趣的贡献程度。然后根据这个贡献程度对短期和长期偏好加权进行融合。
+
+为啥这东西就有用了呢？ 一种理解是，我们知道最终得到的短期或者长期兴趣都是d维的向量， 每一个维度可能代表着不同的兴趣偏好，比如第一维度代表品牌，第二个维度代表类别，第三个维度代表价格，第四个维度代表商店等。当然假真实的向量不可解释。
+
+那么如果我们是直接相加或者是加权相加，其实都意味着长短期兴趣这每个维度都有很高的保留， 但其实上，万一长期兴趣和短期兴趣维度冲突了呢？ 比如短期兴趣里面可能用户喜欢这个品牌，长期用户里面用户喜欢那个品牌，那么听谁的？ 你可能说短期兴趣这个占更大权重呗，那么普通加权可是所有向量都加的相同的权重，品牌这个维度听短期兴趣的，其他维度比如价格，商店也都听短期兴趣的？
+
+而门控机制的巧妙就在于，我会给每个维度都学习到一个权重，而这个权重非0即1(近似)， 那么接下来融合的时候，通过这个门控机制，取长期和短期兴趣向量每个维度上的其中一个。比如在品牌方面听谁的，类别方面听谁的，价格方面听谁的，只会听短期和长期兴趣的其中一个的。这样就不会有冲突发生，而至于具体听谁的，交给网络自己学习。这样就使得用户长期兴趣和短期兴趣融合的时候，每个维度上的信息保留变得有选择。使得兴趣的融合方式更加的灵活。
+
+**这又给我们提供了一种两个向量融合的新思路，不一定非得加权or拼接or相加，还可通过门控机制让网络自己学**
+
+
+
+
+
+
+
+
+
+#### 基于树模型的召回
 
 
 
@@ -1658,4 +1968,4 @@ https://www.jianshu.com/p/5c88f4bd7c71
 
 Homepage: https://labs.criteo.com/2013/12/download-terabyte-click-logs/https://labs.criteo.com/2013/12/download-terabyte-click-logs/
 
-不同模型效果排名: https://paperswithcode.com/sota/click-through-rate-prediction-on-criteo
+##### 不同模型效果排名: https://paperswithcode.com/sota/click-through-rate-prediction-on-criteo
