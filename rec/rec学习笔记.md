@@ -484,7 +484,7 @@ Item2vec方法有其局限性，因为只能利用序列型数据，所以Item2v
 
 Embedding 的表达也应该近似，这是“结构性”的体现。
 
-
+![](https://raw.githubusercontent.com/jackaihfia2334/hexo_image_save/master/11.3.png)
 
 为了使 Graph Embedding 的结果能够表达网络的“结构性”，在随机游走的过程中，需要让游⾛的过程更倾向于BFS，因为 BFS 会更多地
 在当前节点的邻域中游⾛遍历，相当于对当前节点周边的网络结构进行⼀次“微观扫描”。当前节点是“局部中心节点”，还是“边缘节点”，或
