@@ -438,21 +438,182 @@ https://zhuanlan.zhihu.com/p/365690334
 
 #### **基于图的召回**
 
-##### EGES
-
 由于用户和项目的数十亿规模，传统的方法已经不能满足于实际的需求，主要的问题体现在三个方面：
 
-- 可扩展性：现有的推荐方法无法扩展到在拥有十亿的用户和二十亿商品的淘宝中。
+- **可扩展性**：现有的推荐方法无法扩展到在拥有十亿的用户和二十亿商品的淘宝中。
 - **稀疏性**：存在大量的物品与用户的交互行为稀疏。即用户的交互到多集中于以下部分商品，存在大量商品很少被用户交互。
 - **冷启动**：在淘宝中，每分钟会上传很多新的商品，由于这些商品没有用户行为的信息（点击、购买等），无法进行很好的预测。
 
+
+
+Item2vec方法有其局限性，因为只能利用序列型数据，所以Item2vec在处理互联网场景下大量的网络化数据时往往显得捉襟见肘，这
+
+就是 Graph Embedding技术出现的动因。
+
+![img](http://ryluo.oss-cn-chengdu.aliyuncs.com/%E5%9B%BE%E7%89%87image-20220328133138263.png)
+
+##### **DeepWalk**
+
+首先基于用户行为序列构建了物品关系图。可以看出，物品 A和B之间的边产生的原因是用户U1先后购买了物品A和物品B。**如果后续产生了多条相同的有向边，则有向边的权重被加强。**在图上采用随机游走的方式，产生用户行为（物品）序列，再使用Item2vec的方法进行训练得到embedding
+
+##### ![img](https://cdn.jsdelivr.net/gh/swallown1/blogimages@main/images/image-20220418142135912.png)
+
+
+
+随机游走的转移概率如下图，这是针对有向有权图
+
+即DeepWalk的跳转概率就是跳转边的权重占所有相关出边权重之和的比例
+
+![img](http://ryluo.oss-cn-chengdu.aliyuncs.com/%E5%9B%BE%E7%89%87image-20220328144516898.png)
+
+如果物品关系图是无向无权图，那么跳转概率将是上式个特例，即权重M_ij 将为常数1，且N+（v_i）应是节点v_i所有“边”的集
+
+合，而不是所有“出边”的集合。
+
+
+
+
+
+##### **Node2vec**
+
+它通过调整随机游走权重的方法使Graph Embedding的结果更倾向于体现网络的同质性（homophily）或结构性（structural equivalence）。
+
+具体地讲，网络的“同质性”指的是距离相近节点的Embedding应尽量近似，如下图所示，节点 *u* 与其相连的节点 *s*1、*s*2、*s*3、*s*4的 Embedding 表达应该是接近的，这就是网络“同质性”的体现。
+
+“结构性”指的是结构上相似的节点的 Embedding 应尽量近似，图中节点 *U* 和节点 *s*6都是各自局域网络的中心节点，结构上相似，其
+
+Embedding 的表达也应该近似，这是“结构性”的体现。
+
+
+
+为了使 Graph Embedding 的结果能够表达网络的“结构性”，在随机游走的过程中，需要让游⾛的过程更倾向于BFS，因为 BFS 会更多地
+在当前节点的邻域中游⾛遍历，相当于对当前节点周边的网络结构进行⼀次“微观扫描”。当前节点是“局部中心节点”，还是“边缘节点”，或
+是“连接性节点”，其生成的序列包含的节点数量和顺序必然是不同的，从而让最终的Embedding抓取到更多结构性信息。
+
+另外，为了表达“同质性”，需要让随机游走的过程更倾向于DFS，因为DFS更有可能通过多次跳转，游走到远方的节点上，但无论怎样，
+DFS的游走更大概率会在⼀个大的集团内部进行，这就使得⼀个集团或者社区内部的节点的Embedding更为相似，从而更多地表达网络
+的“同质性”。
+
+具体权重调整算法详见《深度学习推荐系统》4.4.2节
+
+
+
+
+
+##### EGES
+
+参考链接：
+
+https://zhuanlan.zhihu.com/p/64200072
+
+https://www.jianshu.com/p/229b686535f1
+
+
+
+**Base Graph Embedding—>Graph Embedding with Side Information—>Enhanced Graph Embedding with Side Information**
+
+基本思想是在DeepWalk生成的Graph Embedding基础上引入补充信息。单纯使用用户行为生成的物品相关图，固然可以生成物品的Embedding，但是如果遇到新加入的物品，或者没有过多互动信息的“长尾”物品，则推荐系统将出现严重的**冷启动问题**。为了使“冷启动”的商品获得“合理”的初始Embedding，阿里巴巴团队通过引入更多**补充信息（side information）**来丰富Embedding信息的来源，从而使没有历史行为记录的商品获得较合理的初始Embedding。
+
+
+
+生成Graph Embedding的第⼀步是生成物品关系图，通过用户行为序列可以生成物品关系图，**也可以利⽤“相同属性”“相同类别”等信息建立物品之间的边，生成基于内容的知识图谱**。而基于知识图谱生成的物品向量可以被称为补充信息 Embedding向量。当然，根据补充信息类别的不同，可以有多个补充信息Embedding向量。
+
+如何融合⼀个物品的多个Embedding向量，使之形成物品最后的Embedding呢？最简单的方法是在深度神经网络中加入平均池化层，将不同Embedding平均起来。为了防止简单的平均池化导致有效Embedding信息的丢失，阿里巴巴在此基础上进行了加强，对每个 Embedding 加上了权重，如图所示，对每类特征对应的 Embedding 向量，分别赋予权重*a*0，*a*1，…，a*n*。图中的隐层表达（Hidden Representation层）就是对不同Embedding进行加权平均操作的层，将加权平均后的Embedding向量输入softmax层，通过梯度反向传播，求得每个Embedding的权重a_i（i*=0…*n）。
+
+![](http://ryluo.oss-cn-chengdu.aliyuncs.com/%E5%9B%BE%E7%89%87image-20220328154950289.png)
+
+在实际的模型中，阿⾥巴巴采用了 exp(a_j) 而不是 a_j作为相应Embedding的权重，主要原因有⼆：⼀是避免权重为0；⼆是因为exp(a_j)在梯度下降过程中有良好的数学性质
+
+
+
+
+
+##### GraphSAGE
+
+GraphSAGE提出的前提是因为基于直推式(transductive)学习的图卷积网络无法适应工业界的大多数业务场景。我们知道的是，基于直推式学习的图卷积网络每次学习是针对于当前图上所有的节点。然而在实际的工业场景中，图中的结构和节点都不可能是固定的，会随着时间的变化而发生改变。在这样的场景中，直推式学习的方法就需要不断的重新训练才能够为新加入的节点学习embedding，导致在实际场景中无法投入使用。
+
+斯坦福大学提出了一种归纳(inductive)学习的GCN方法——GraphSAGE，即**通过聚合邻居信息的方式为给定的节点学习embedding**。GraphSAGE是通过学习聚合节点邻居生成节点Embedding的函数的方式，为任意节点学习embedding，进而将GCN扩展成归纳学习任务。
+
+![img](https://cdn.jsdelivr.net/gh/swallown1/blogimages@main/images/image-20220423094435223.png)
+
+这个公式可以非常直观的让我们理解GraphSAGE的原理。
+
+- h_v^0表示图上节点的初始化表示，等同于节点自身的特征。
+- h_v^k表示第k层卷积后的节点表示，其来源于两个部分：
+  - 第一部分来源于节点v的邻居节点集合N(v），利用邻居节点的第k-1层卷积后的特征h_u^{k-1}进行 (∑*u*∈*N*(*v*)∣*N*(*v*)∣h_u^{k-1} ）后，再进行线性变换。这里**借助图上的边将邻居节点的信息通过边关系聚合到节点表示中(简称卷积操作)**。
+  - 第二部分来源于节点v的第k-1成卷积后的特征h_v^{k-1}，进行线性变换。
+
+
+
+- 总的来说图卷积的思想是**在对自身做多次非线性变换时，同时利用边关系聚合邻居节点信息。**
+- 最后一次卷积结果作为节点的最终表示Z，以用于下游任务(节点分类，链路预测或节点召回)
+
+##### 
+
+**邻居采样**
+
+GraphSAGE的具体采样过程是，首先根据中心节点集合B^k，对集合中每个中心节点通过随机采样的方式对其邻居节点采样固定数量S个(如果邻居节点数量大于S，采用无放回抽样；如果小于S，则采用有放回抽样)，形成的集合表示为B^{k-1}；以此类推每次都是为前一个得到的集合的每个节点随机采样S个邻居，最终得到第k层的所有需要参与计算的节点集合B^{0}。
+
+
+
+**聚合函数**
+
+如何对于采样到的节点集进行聚合，介绍的4种方式：Mean 聚合、Convolutional 聚合、LSTM聚合以及Pooling聚合。由于邻居节点是无序的，所以希望构造的聚合函数具有**对称性(即输出的结果不因输入排序的不同而改变)，同时拥有较强的表达能力。**
+
+- **M**ean 聚合：首先会对邻居节点按照**element-wise**进行均值聚合，然后将当前节点k-1层得到特征与邻居节点均值聚合后的特征，**分别送入全连接网络后相加得到结果。**
+- Convolutional 聚合：这是一种基于GCN聚合方式的变种，首先对邻居节点特征和自身节点特征求均值，得到的聚合特征送入到全连接网络中。与Mean不同的是，这里**只经过一个全连接层**。
+- LSTM聚合：由于LSTM可以捕捉到序列信息，因此相比于Mean聚合，这种聚合方式的表达能力更强；但由于LSTM对于输入是有序的，因此该方法**不具备对称性**。作者对于无序的节点进行随机排列以调整LSTM所需的有序性。
+- Pooling聚合：对于邻居节点和中心节点进行一次非线性转化，将结果进行一次基于**element-wise**的**最大池化**操作。该种方式具有**较强的表达能力**的同时还具有**对称性**。
+
+
+
 ##### PinSAGE
 
+PinSAGE 是在GraphSAGE的基础上进行改进以适应实际的工业场景，因此除了改进卷积操作中的邻居采样策略以及聚合函数的同时还有一些工程技巧上的改进，使得在大数据场景下能更快更好的进行模型训练。
 
 
 
+**重要性采样**
+
+在实际场景当中，一个item可能被数以千万的用户交互过，所以不可能聚合所有邻居节点是不可行的，只可能是采样部分邻居进行信息聚合。但是如果采用GraphSAGE中随机采样的方法，由于采样的邻居有限(这里是相对于所有节点而言)，会存在一定的偏差。因此PinSAGE 在采样中考虑了更加重要的邻居节点，即卷积时只注重部分重要的邻居节点信息，已达到高效计算的同时又可以消除偏置。
+
+PinSAGE使用重要性采样方法，即需要为每个邻居节点计算一个重要性权重，根据权重选取top-t的邻居作为聚合时的邻居集合。其中计算重要性的过程是，以目标节点为起点，进行random-walk，采样结束之后计算所有节点访问数的L1-normalized作为重要性权重，同时这个权重也会在聚合过程中加以使用(**加权聚合**)。
 
 
+
+**聚合函数**
+
+在实际执行过程中通过对每一层执行一次图卷积操作以得到不同阶邻居的信息，单层图卷积过程如下三步：
+
+1. 聚合邻居： 先将所有的邻居节点经过一次非线性转化(一层DNN)，再由聚合函数(Pooling聚合) （如元素平均，**加权和**等）将所有邻居信息聚合成目标节点的embedding。这里的加权聚合采用的是通过random-walk得到的重要性权重。
+2. 更新当前节点的embedding：将目标节点当前的向量 z_u与步骤1中聚合得到的邻居向量 n_u进行拼接，在通过一次非线性转化。
+3. 归一化操作：对目标节点向量 z_u** 归一化。
+
+Convolve算法的聚合方法与GraphSAGE的Pooling聚合函数相同，主要区别在于对更新得到的向量 z_u进行归一化操作，**可以使训练更稳定，以及在近似查找最近邻的应用中更有效率。**
+
+
+
+**基于mini-batch堆叠多层图卷积**
+
+与GraphSAGE类似，采用的是基于mini-batch 的方式进行训练。在实际的工业场景中，由于用户交互图非常庞大，无法对于所有的节点同时学习一个embedding，因此需要从原始图上寻找与 mini-batch 节点相关的子图。具体地是说，对于mini-batch内的所有节点，会通过采样的方式逐层的寻找相关邻居节点，再通过对每一层的节点做一次图卷积操作，以从k阶邻居节点聚合信息。
+
+![img](https://cdn.jsdelivr.net/gh/swallown1/blogimages@main/images/image-20220406204431024.png)
+
+如上图所示：对于batch内的所有节点(图上最顶层的6个节点)，依次根据权重采样，得到batch内所有节点的一阶邻居(图上第二层的所有节点)；然后对于所有一阶邻居再次进行采样，得到所有二阶邻居(图上的最后一层)。节点采样阶段完成之后，与采样的顺序相反进行聚合操作。首先对二阶邻居进行单次图卷积，将二阶节点信息聚合已更新一阶节点的向量表示(其中小方块表示的是一层非线性转化)；其次对一阶节点再次进行图卷积操作，将一阶节点的信息聚合已更新batch内所有节点的向量表示。仅此对于一个batch内的所有的样本通过卷积操作学习到一个embedding，而每一个batch的学习过程中仅**利用与mini-batch内相关节点的子图结构。**
+
+
+
+**训练过程**
+
+PinSage在训练时采用的是 Margin Hinge Loss 损失函数，主要的思想是最大化正例embedding之间的相关性，同时还要保证负例之间相关性相比正例之间的相关性小于某个阈值(Margin)。具体的公式如下：
+$$
+J_{\mathcal{G}}\left(\mathrm{z}_{q} \mathrm{z}_{i}\right)=\mathbb{E}_{n_{k} \sim P_{n}(q)} \max \left\{0, \mathrm{z}_{q} \cdot \mathrm{z}_{n_{k}}-\mathrm{z}_{q} \cdot \mathrm{z}_{i}+\Delta\right\}
+$$
+其中Z_q是学习得到的目标节点embedding，Z_i是与目标节点相关item的embedding，Z_{n_k}是与目标节点不相关item的embedding，Δ为margin值，具体大小需要调参。那么对于相关节点i，以及不相关节点nk。
+
+
+
+正负样本具体都是如何定义的，这对于召回模型的训练意义重大，让我们看看具体是如何定义的。
 
 
 
@@ -694,11 +855,135 @@ $$
 
 而门控机制的巧妙就在于，我会给每个维度都学习到一个权重，而这个权重非0即1(近似)， 那么接下来融合的时候，通过这个门控机制，取长期和短期兴趣向量每个维度上的其中一个。比如在品牌方面听谁的，类别方面听谁的，价格方面听谁的，只会听短期和长期兴趣的其中一个的。这样就不会有冲突发生，而至于具体听谁的，交给网络自己学习。这样就使得用户长期兴趣和短期兴趣融合的时候，每个维度上的信息保留变得有选择。使得兴趣的融合方式更加的灵活。
 
-**这又给我们提供了一种两个向量融合的新思路，不一定非得加权or拼接or相加，还可通过门控机制让网络自己学**
+**这又给我们提供了一种两个向量融合的新思路，不一定非得加权or拼接or相加，还可通过门控机制让网络自己学。**
 
 
 
 
+
+**简易实现：**
+
+注意长期和短期会话对side info不同的处理方式
+
+```python
+def SDM(user_feature_columns, item_feature_columns, history_feature_list, num_sampled=5, units=32, rnn_layers=2,
+        dropout_rate=0.2, rnn_num_res=1, num_head=4, l2_reg_embedding=1e-6, dnn_activation='tanh', seed=1024):
+    """
+    :param rnn_num_res: rnn的残差层个数 
+    :param history_feature_list: short和long sequence field
+    """
+    # item_feature目前只支持doc_id， 再加别的就不行了，其实这里可以改造下
+    if (len(item_feature_columns)) > 1: 
+        raise ValueError("SDM only support 1 item feature like doc_id")
+    
+    # 获取item_feature的一些属性
+    item_feature_column = item_feature_columns[0]
+    item_feature_name = item_feature_column.name
+    item_vocabulary_size = item_feature_column.vocabulary_size
+    
+    # 为用户特征创建Input层
+    user_input_layer_dict = build_input_layers(user_feature_columns)
+    item_input_layer_dict = build_input_layers(item_feature_columns)
+    
+    # 将Input层转化成列表的形式作为model的输入
+    user_input_layers = list(user_input_layer_dict.values())
+    item_input_layers = list(item_input_layer_dict.values())
+    
+    # 筛选出特征中的sparse特征和dense特征，方便单独处理
+    sparse_feature_columns = list(filter(lambda x: isinstance(x, SparseFeat), user_feature_columns)) if user_feature_columns else []
+    dense_feature_columns = list(filter(lambda x: isinstance(x, DenseFeat), user_feature_columns)) if user_feature_columns else []
+    if len(dense_feature_columns) != 0:
+        raise ValueError("SDM dont support dense feature")  # 目前不支持Dense feature
+    varlen_feature_columns = list(filter(lambda x: isinstance(x, VarLenSparseFeat), user_feature_columns)) if user_feature_columns else []
+    
+    # 构建embedding字典
+    embedding_layer_dict = build_embedding_layers(user_feature_columns+item_feature_columns)
+    
+    # 拿到短期会话和长期会话列 之前的命名规则在这里起作用
+    sparse_varlen_feature_columns = []
+    prefer_history_columns = []
+    short_history_columns = []
+    
+    prefer_fc_names = list(map(lambda x: "prefer_" + x, history_feature_list))
+    short_fc_names = list(map(lambda x: "short_" + x, history_feature_list))
+    
+    for fc in varlen_feature_columns:
+        if fc.name in prefer_fc_names:
+            prefer_history_columns.append(fc)
+        elif fc.name in short_fc_names:
+            short_history_columns.append(fc)
+        else:
+            sparse_varlen_feature_columns.append(fc)
+    
+    # 获取用户的长期行为序列列表 L^u 
+    # [<tf.Tensor 'emb_prefer_doc_id_2/Identity:0' shape=(None, 50, 32) dtype=float32>, <tf.Tensor 'emb_prefer_cat1_2/Identity:0' shape=(None, 50, 32) dtype=float32>, <tf.Tensor 'emb_prefer_cat2_2/Identity:0' shape=(None, 50, 32) dtype=float32>]
+    prefer_emb_list = embedding_lookup(prefer_fc_names, user_input_layer_dict, embedding_layer_dict)
+    # 获取用户的短期序列列表 S^u
+    # [<tf.Tensor 'emb_short_doc_id_2/Identity:0' shape=(None, 5, 32) dtype=float32>, <tf.Tensor 'emb_short_cat1_2/Identity:0' shape=(None, 5, 32) dtype=float32>, <tf.Tensor 'emb_short_cat2_2/Identity:0' shape=(None, 5, 32) dtype=float32>]
+    short_emb_list = embedding_lookup(short_fc_names, user_input_layer_dict, embedding_layer_dict)
+    
+    # 用户离散特征的输入层与embedding层拼接 e^u
+    user_emb_list = embedding_lookup([col.name for col in sparse_feature_columns], user_input_layer_dict, embedding_layer_dict)
+    user_emb = concat_func(user_emb_list)
+    user_emb_output = Dense(units, activation=dnn_activation, name='user_emb_output')(user_emb)  # (None, 1, 32)
+    
+    # 长期序列行为编码
+    # 过AttentionSequencePoolingLayer --> Concat --> DNN
+    prefer_sess_length = user_input_layer_dict['prefer_sess_length']
+    prefer_att_outputs = []
+    # 遍历长期行为序列
+    for i, prefer_emb in enumerate(prefer_emb_list):
+        prefer_attention_output = AttentionSequencePoolingLayer(dropout_rate=0)([user_emb_output, prefer_emb, prefer_sess_length])
+        prefer_att_outputs.append(prefer_attention_output)
+    prefer_att_concat = concat_func(prefer_att_outputs)   # (None, 1, 64) <== Concat(item_embedding，cat1_embedding,cat2_embedding)
+    prefer_output = Dense(units, activation=dnn_activation, name='prefer_output')(prefer_att_concat)
+    # print(prefer_output.shape)   # (None, 1, 32)
+    
+    # 短期行为序列编码
+    short_sess_length = user_input_layer_dict['short_sess_length']
+    short_emb_concat = concat_func(short_emb_list)   # (None, 5, 64)   这里注意下， 对于短期序列，描述item的side info信息进行了拼接
+    short_emb_input = Dense(units, activation=dnn_activation, name='short_emb_input')(short_emb_concat)  # (None, 5, 32)
+    # 过rnn 这里的return_sequence=True， 每个时间步都需要输出h
+    short_rnn_output = DynamicMultiRNN(num_units=units, return_sequence=True, num_layers=rnn_layers, 
+                                       num_residual_layers=rnn_num_res,   # 这里竟然能用到残差
+                                       dropout_rate=dropout_rate)([short_emb_input, short_sess_length])
+    # print(short_rnn_output) # (None, 5, 32)
+    # 过MultiHeadAttention  # (None, 5, 32)
+    short_att_output = MultiHeadAttention(num_units=units, head_num=num_head, dropout_rate=dropout_rate)([short_rnn_output, short_sess_length]) # (None, 5, 64)
+    # user_attention # (None, 1, 32)
+    short_output = UserAttention(num_units=units, activation=dnn_activation, use_res=True, dropout_rate=dropout_rate)([user_emb_output, short_att_output, short_sess_length])
+    
+    # 门控融合
+    gated_input = concat_func([prefer_output, short_output, user_emb_output])
+    gate = Dense(units, activation='sigmoid')(gated_input)   # (None, 1, 32)
+    
+    # temp = tf.multiply(gate, short_output) + tf.multiply(1-gate, prefer_output)  感觉这俩一样？
+    gated_output = Lambda(lambda x: tf.multiply(x[0], x[1]) + tf.multiply(1-x[0], x[2]))([gate, short_output, prefer_output])  # [None, 1,32]
+    gated_output_reshape = Lambda(lambda x: tf.squeeze(x, 1))(gated_output)  # (None, 32)  这个维度必须要和docembedding层的维度一样，否则后面没法sortmax_loss
+    
+    # 接下来
+    item_embedding_matrix = embedding_layer_dict[item_feature_name]  # 获取doc_id的embedding层
+    item_index = EmbeddingIndex(list(range(item_vocabulary_size)))(item_input_layer_dict[item_feature_name]) # 所有doc_id的索引
+    item_embedding_weight = NoMask()(item_embedding_matrix(item_index))  # 拿到所有item的embedding
+    pooling_item_embedding_weight = PoolingLayer()([item_embedding_weight])  # 这里依然是当可能不止item_id，或许还有brand_id, cat_id等，需要池化
+    
+    # 这里传入的是整个doc_id的embedding， user_embedding, 以及用户点击的doc_id，然后去进行负采样计算损失操作
+    output = SampledSoftmaxLayer(num_sampled)([pooling_item_embedding_weight, gated_output_reshape, item_input_layer_dict[item_feature_name]])
+    
+    model = Model(inputs=user_input_layers+item_input_layers, outputs=output)
+    
+    # 下面是等模型训练完了之后，获取用户和item的embedding
+    model.__setattr__("user_input", user_input_layers)
+    model.__setattr__("user_embedding", gated_output_reshape)  # 用户embedding是取得门控融合的用户向量
+    model.__setattr__("item_input", item_input_layers)
+    # item_embedding取得pooling_item_embedding_weight, 这个会发现是负采样操作训练的那个embedding矩阵
+    model.__setattr__("item_embedding", get_item_embedding(pooling_item_embedding_weight, item_input_layer_dict[item_feature_name]))
+    return model
+```
+
+**总结：**
+
+借鉴的地方首先是多头注意力机制也能学习到用户的多兴趣， 这样对于多兴趣，就有了胶囊网络与多头注意力机制两种思路。 而对于两个向量融合，这里又给我们提供了一种门控融合机制。
 
 
 
@@ -706,11 +991,62 @@ $$
 
 #### 基于树模型的召回
 
+**TDM**
+
+参考链接：https://zhuanlan.zhihu.com/p/93201318
+
+通常大规模搜索、广告、推荐系统的召回模块包括以下几个部分：索引（用于高效检索）、评分规则（给出用户对于商品的偏好程度）、检索算法（根据评分规则，利用索引筛选出合适的商品集）。TDM的整体模型可以分为**树形索引结构**和**深层排序结构**两部分
+
+如下图所示：
+
+![img](https://pic4.zhimg.com/80/v2-c7a1714f03e5a0f2dbd94d78db1e54f7_1440w.webp)
 
 
 
+其中索引的构建方式就是绿色方框中的树形结构，评分规则就是红框中的复杂DNN网络（用于输出用户对树节点的偏好程度，其中叶子节点表征每一个商品，非叶子节点是对商品的一种抽象化表征，可以不具有具体的物理意义），检索算法是**beam search**算法。
+
+基于上述系统架构，整个召回过程可以概括为如下几个部分：
+
+1、文中指出绿色框中树形结构的叶子节点表征的是具体的每一个商品，具有明确的物理意义（如叶子节点8代表粗跟高跟鞋，叶子节点9代表细跟高跟鞋），而非叶子节点则是对商品的进一步抽象化表征，是一种更粗粒度的表征（如节点4可能代表的是高跟鞋，当然节点4可能也不具备明确的屋里意义），总之**父节点相较于子节点来说是一种更粗粒度的表征**。
 
 
+
+2、在这种树形索引结构的基础上如何保证检索的高效性呢，文中指出为高效的检索出Top-K的商品，该树形结构实际上是一种类似于最大堆的树结构，并且对于用户u来说，对l层非叶子节点n的偏好概率表征如下式：
+
+![img](https://pic1.zhimg.com/80/v2-8ebbfb6037db2cedc564ee499b378548_1440w.webp)
+
+用户-商品偏好概率（兴趣建模）：其中p(n|u)表示的就是用户u对j层节点n感兴趣的概率，α(j)是归一化因子，从上式可以得出，用户u对j层节点n感兴趣的概率，等于用户对该节点的子节点的偏好概率的最大值。所以我们如果最终需要检索出Top-K个商品，只需要**自顶向下**的在每一层检索出当前层的Top-K节点，但是当前层的检索集是上一层Top-K节点的子节点，从这些子节点中检索出当前层的Top-K节点。
+
+具体举例来说，如图中绿色框的树形结构，最终要检索Top-2商品，那么从树的第二层开始，a）我们选取第二层的Top-K节点(2和3)；b)在第三层的时候，根据上述公式，我们可以知道该层的Top-2的一定位于节点2和节点3的子节点中，所以我们只需要从4、5、6、7节点中检索Top-2，假设检索结果是节点5和6；c)在第四层中我们检索该层的Top-2，根据公式可以知道该层的Top-2节点一定存在于节点5和6的叶子节点中，所以只需要从叶子节点10、11、12、13中检索出最终的Top-2节点，上述检索过程即为Beam Search方式。
+
+
+
+3、在了解TDM是如何实现检索过程之后，还需要解决的问题就是如何对每层选取Top-K节点，具体做法就如上图中的红色框的部分，该部分的输入包括用户的历史行为特征以及节点的Embedding特征，在对每一层选取Top-K的时候，需要将这一层的每一个节点输入左侧模型中得到相应的预测分数，最终根据分数来取Top，文中指出TDM可以任意复杂的排序模型也得益于这种系统架构。当然**构建模型训练所需的训练样本的过程中涉及到对负样本的采样操作**，具体可以参考论文中的表述。
+
+
+
+4、训练过程
+
+利用采样得到训练样本之后，相应的损失函数如下所示：
+$$
+\begin{array}{l}
+-\sum_{u} \sum_{n \in \mathcal{Y}_{u}^{+} \cup \mathcal{Y}_{u}^{-}}\\
+y_{u}(n) \log P\left(\hat{y}_{u}(n)=1 \mid n u\right)+\left(1-y_{u}(n)\right) \log P\left(\hat{y}_{u}(\tilde{n})=(\log u)\right.
+\end{array}
+$$
+在给定训练样本和损失函数的基础上，接下来需要做的就是进行模型的训练，整个系统包括树形索引结构和深层排序结构两部分，文中采用的是**联合训练**的方式，整体联合训练的方式如下：a)初始化一棵树然后基于该树训练深层模型直到其收敛；b)基于训练好的深层模型（包括叶子节点的embedding部分），利用节点的Embedding重新构建一颗新的树；c)基于新的树结构，重新训练深层模型。
+
+具体的，在初始化树结构的时候，首先借助商品的类别信息进行排序，将相同类别的商品放到一起，然后递归的将同类别中的商品等量的分到两个子类中，直到集合中只包含一项，利用**这种自顶向下的方式构建树**。**基于该树采样生成深度模型训练所需的样本，然后进一步训练模型**，训练结束之后可以得到每个树节点对应的Embedding向量，利用节点的Embedding向量，**采用K-Means聚类方法来重新构建一颗树**，最后基于这颗新生成的树，重新训练深层网络。
+
+![image-20210308142624189](http://ryluo.oss-cn-chengdu.aliyuncs.com/%E5%9B%BE%E7%89%87image-20220420220831318.png)
+
+
+
+5、线上服务架构
+
+![img](https://pic2.zhimg.com/80/v2-d7c44a76dc571a1c6125094b9cf813e9_1440w.webp)
+
+当线上系统收到用户发送的请求时，feature server主要得到用户的相关行为特征，并将其发送给user target server，后者则利用线上部署的树形索引结构和深层网络完成用户对节点的偏好计算以及检索Top-K商品的过程。
 
 
 
