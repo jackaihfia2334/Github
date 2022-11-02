@@ -1555,10 +1555,6 @@ Field-Interaction Type：每组特征交互的时候，用一个*W*矩阵， 那
 
 
 
-
-
-
-
 模型结构如下：
 
 ![image-20210308142624189](https://img-blog.csdnimg.cn/20210703160140322.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3d1emhvbmdxaWFuZw==,size_1,color_FFFFFF,t_70#pic_center)
