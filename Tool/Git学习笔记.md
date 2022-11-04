@@ -1,6 +1,8 @@
-### 1.删除文件
+### 1.删除文件/文件夹
 
 在Git中，删除也是一个修改操作
+
+#### 删除文件
 
 实战一下，先添加一个新文件`test.txt`到Git并且提交：
 
@@ -31,6 +33,38 @@ $ git commit -m "remove test.txt"
  1 file changed, 1 deletion(-)
  delete mode 100644 test.txt
 ```
+
+
+
+#### 删除文件夹
+
+https://so.csdn.net/so/search?q=commit&spm=1001.2101.3001.7020
+
+1、找到文件夹目录
+
+```
+cd java\com\ejudata\platform
+```
+
+2、删除文件夹
+
+```
+git rm -rf 文件夹名
+```
+
+3、commit]到本地
+
+```
+git commit -m 'delete dir'
+```
+
+4、push到远程
+
+```
+git push
+```
+
+
 
 
 
