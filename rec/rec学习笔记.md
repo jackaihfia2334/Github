@@ -2013,6 +2013,70 @@ eg
 
 
 
+#### MMR多样性算法
+
+（Maximal Margnal Relevance）是从搜索排序中引申来的
+
+回顾： 精排给n个候选物品打分，融合之后的分数为reward_i，reward_n
+把第i和j个物品的相似度记作sim（i，j）
+从n个物品中选出k个，既要有高精排分数，也要有多样性
+
+![](https://raw.githubusercontent.com/jackaihfia2334/hexo_image_save/master/19.png)
+
+![](https://raw.githubusercontent.com/jackaihfia2334/hexo_image_save/master/20.png)
+
+
+
+滑动窗口优化
+
+![](https://raw.githubusercontent.com/jackaihfia2334/hexo_image_save/master/21.png)
+
+![](https://raw.githubusercontent.com/jackaihfia2334/hexo_image_save/master/22.png)
+
+对滑动窗口直观的解释，距离近的物品希望不相似，距离远的则无所谓
+
+例如曝光30个物品，希望第1，2，3个物品不相似，第30个物品与第一个是否相似则无关紧要
+
+
+
+#### 重排的规则
+
+规则优先级高于多样性算法
+
+**规则1：最多连续出现k篇某种笔记**
+小红书推荐系统的物品分为图文笔记、视频笔记
+最多连续出现k=5篇图文笔记，最多连续出现k=5篇视频笔记
+如果排i到i+4的全都是图文笔记，那么排在i+5的必须是视频笔记
+
+**规则2：每k篇笔记最多出现1篇某种笔记**
+运营推广笔记的精排分会乘以大于1的系数（boost）帮助笔记获得更多曝光
+为了防止boost影响体验，限制每k=9篇笔记最多出现1篇运营推广笔记
+如果排第i位的是运营推广笔记，那么排i+1到i+8的不能是运营推广笔记
+
+**规则3：前t篇笔记最多出现k篇某种笔记**
+排名前t篇笔记最容易被看到，对用户体验最重要（小红书的top4为首屏）
+小红书推荐系统有带电商卡片的笔记，过多可能会影响体验
+前t=1篇笔记最多出现k=0篇带电商卡片的笔记
+前t=4篇笔记最多出现k=1篇带电商卡片的笔记
+
+
+
+MMR和重排规则可以轻易结合
+
+![](https://raw.githubusercontent.com/jackaihfia2334/hexo_image_save/master/23.png)
+
+
+
+#### DPP多样性算法
+
+https://github.com/wangshusen/RecommenderSystem/blob/main/Notes/06_Rerank.pdf
+
+**数学基础**
+
+超平行体
+
+
+
 
 
 
@@ -2269,10 +2333,6 @@ def ESSM(dnn_feature_columns, task_type='binary', task_names=['ctr', 'ctcvr'],
 #### MMOE
 
 2018年谷歌提出的，全称是Multi-gate Mixture-of-Experts
-
-
-
-
 
 模型中，如果采用一个网络同时完成多个任务，就可以把这样的网络模型称为多任务模型， 这种模型能在不同任务之间学习共性以及差异性，能够提高建模的质量以及效率。 常见的多任务模型的设计范式大致可以分为三大类：
 
@@ -2548,3 +2608,18 @@ https://www.jianshu.com/p/5c88f4bd7c71
 Homepage: https://labs.criteo.com/2013/12/download-terabyte-click-logs/https://labs.criteo.com/2013/12/download-terabyte-click-logs/
 
 ##### 不同模型效果排名: https://paperswithcode.com/sota/click-through-rate-prediction-on-criteo
+
+
+
+
+
+
+
+## 五、工业界实用技术
+
+
+
+### 工程实现
+
+#### 离线训练之参数服务器
+
