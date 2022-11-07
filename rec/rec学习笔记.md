@@ -2075,7 +2075,9 @@ https://github.com/wangshusen/RecommenderSystem/blob/main/Notes/06_Rerank.pdf
 
 超平行体
 
+**矩阵的特征值之积等于矩阵的行列式**
 
+**矩阵的特征值之和等于矩阵的迹**
 
 
 
