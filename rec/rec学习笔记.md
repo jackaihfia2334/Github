@@ -2707,7 +2707,7 @@ ID Embedding改进方案2：利用相似笔记embedding向量。
 系统维护类目索引：类目 —> 笔记列表（按时间倒排）
 用类目索引做召回：用户画像—>类目—> 笔记列表
 
-![image-20221107235309317](C:\Users\myf\AppData\Roaming\Typora\typora-user-images\image-20221107235309317.png)
+![](https://raw.githubusercontent.com/jackaihfia2334/hexo_image_save/master/24.png)
 
 取回笔记列表上前k篇笔记（即最新的k篇）
 
