@@ -107,7 +107,7 @@
 - 基于用户的协同过滤算法（UserCF）
 - 基于物品的协同过滤算法（ItemCF）
 
-重点是**计算相似度**     实现代码见jupyter notebook   **rec_test**
+重点是**计算相似度**     实现代码见 jupyter notebook   **rec_test**
 
 
 
@@ -2890,25 +2890,88 @@ look-like用于新物品召回
 大盘指标：消费时长、日活、月活。
 **标准的AB测试只针对大盘指标和用户侧指标**
 
+![](https://raw.githubusercontent.com/jackaihfia2334/hexo_image_save/master/31.png)
 
 
 
+##### 用户侧实验
+
+![](https://raw.githubusercontent.com/jackaihfia2334/hexo_image_save/master/32.png)
+
+缺点
+限定：保量100次曝光
+假设：新笔记曝光越多，用户使用APP时长越低(因为新笔记缺少交互记录，推荐往往不够精准和个性化)
+新策略：把新笔记排序时的权重增大两倍
+结果（只看用户消费指标）
+AB测试的diff是负数（实验组不如对照组）
+如果推全，diff会缩小（比如-2% —> -1%）
+
+![](https://raw.githubusercontent.com/jackaihfia2334/hexo_image_save/master/33.png)
 
 
 
+##### 作者侧实验
+
+###### 方案一
+
+![](D:\MyGit\hexo_image_save\34.2.png)
+
+![](https://raw.githubusercontent.com/jackaihfia2334/hexo_image_save/master/34.2.png)
+
+缺点1：新笔记之间会抢流量
+
+设定：新老笔记走各自队列，没有竞争。
+重排分给新笔记1/3流量，分给老笔记2/3流量
+
+新策略：把新笔记的权重增大两倍
+
+结果（只看作者发布指标）
+
+- AB测试的diff是正数（实验组优于对照组）
+
+- 如果推全，diff会消失（比如2%→0）
 
 
 
+缺点2：新笔记和老笔记抢流量
+
+设定：新老笔记自由竞争。
+
+新策略：把新笔记排序时的权重增大两倍
+
+- AB测试时，50%新笔记（带策略）跟100%老笔记抢流量
+- 推全后，100%新笔记（带策略）跟100%老笔记抢流量
+- AB测试结果与推全结果有差异
+
+AB实验阶段，50%新笔记抢占100%的老笔记流量，平均一个新笔记抢走2个老笔记的流量,全量后，100%新笔记抢占100%老笔记流量，平均1个新抢走1个老，新物品更难抢到流量，问题在于 AB 测试结果与推全前后的变化不一致。
+
+###### 方案二
+
+![](D:\MyGit\hexo_image_save\35.png)
+
+![](https://raw.githubusercontent.com/jackaihfia2334/hexo_image_save/master/35.png)
+
+方案二比方案一的优缺点
+优点：新笔记的两个桶不抢流量，实验结果更可信
+相同：新笔记和老笔记抢流量，AB测试结果与推全结果有差异（AB实验阶段，50%新笔记抢占100%的老笔记流量，平均一个新笔记抢走2个老笔记的流量,全量后，100%新笔记抢占100%老笔记流量，平均1个新抢走1个老，新物品更难抢到流量，问题在于 AB 测试结果与推全前后的变化不一致。）
+缺点：新笔记池减小一半，对用户体验造成负面影响
 
 
 
-总结：
+###### 方案三
+
+![](D:\MyGit\hexo_image_save\36.png)
+
+![](https://raw.githubusercontent.com/jackaihfia2334/hexo_image_save/master/36.png)
+
+新笔记、老笔记、用户均被切分，最为极端，A/B测试的可信度最高，但是相当于切分为两个app，会极大影响用户体验和大盘消费指标
+
+
+
+###### 总结
+
 **冷启的AB测试需要观测作者发布指标和用户消费指标**
 **各种AB测试的方案都有缺点**
-
-
-
-
 
 **设计方案的时候，问自己几个问题：**
 实验组、对照组新笔记会不会抢流量？
