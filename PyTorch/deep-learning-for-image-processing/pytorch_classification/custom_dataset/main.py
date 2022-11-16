@@ -7,10 +7,11 @@ from my_dataset import MyDataSet
 from utils import read_split_data, plot_data_loader_image
 
 # https://storage.googleapis.com/download.tensorflow.org/example_images/flower_photos.tgz
-root = "/home/wz/my_github/data_set/flower_data/flower_photos"  # 数据集所在根目录
+root = "C:/Users/myf/MyGit/Github/PyTorch/deep-learning-for-image-processing/data_set/flower_photos"  # 数据集所在根目录
 
 
 def main():
+    print(os.cpu_count())
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("using {} device.".format(device))
 
