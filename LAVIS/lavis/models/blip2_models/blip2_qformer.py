@@ -136,6 +136,7 @@ class Blip2Qformer(Blip2Base):
         # image-text similarity: aggregate across all query tokens
         sim_i2t, _ = sim_q2t.max(-1)
         sim_i2t = sim_i2t / self.temp
+        # [batch_size, batch_size*num_gpu]
 
         # text-query similarity: [batch_size, batch_size*num_gpu, num_query_tokens]
         sim_t2q = torch.matmul(
@@ -164,7 +165,7 @@ class Blip2Qformer(Blip2Base):
         with torch.no_grad():
             weights_t2i = F.softmax(sim_t2i, dim=1) + 1e-4
             weights_t2i[:, rank * bs : rank * bs + bs].fill_diagonal_(0)
-            weights_i2t = F.softmax(sim_i2t, dim=1) + 1e-4
+            weights_i2t = F.softmax(sim_i2t, dim=1) + 1e-4 
             weights_i2t[:, rank * bs : rank * bs + bs].fill_diagonal_(0)
 
         # select a negative image for each text
@@ -197,6 +198,8 @@ class Blip2Qformer(Blip2Base):
         query_atts_itm = torch.ones(query_tokens_itm.size()[:-1], dtype=torch.long).to(
             image.device
         )
+        #a[:-1])     除了最后一个取全部 [b,num_query,dim]->[b.num_query]
+
         attention_mask_all = torch.cat([query_atts_itm, text_atts_all], dim=1)
 
         image_embeds_all = torch.cat(
